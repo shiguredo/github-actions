@@ -7,6 +7,7 @@ GitHub Actions で使える便利なアクションを提供するリポジト�
 | アクション名 | 説明 | ドキュメント |
 |-------------|------|-------------|
 | Check Repository Permission | リポジトリへの書き込み権限を確認 | [詳細](#check-repository-permission) |
+| Download OpenH264 | プラットフォーム別に OpenH264 ライブラリをダウンロード | [詳細](#download-openh264) |
 
 ## アクション詳細
 
@@ -107,6 +108,113 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Running external CI without secrets"
+```
+
+</details>
+
+### Download OpenH264
+
+指定したプラットフォーム用の OpenH264 ライブラリをダウンロードするアクションです。
+複数のプラットフォーム（Linux、macOS、Windows）に対応しており、CI/CD 環境で OpenH264 を必要とする場合に便利です。
+
+このアクションは GitHub CLI (`gh`) を使用して cisco/openh264 の公式リリースから動的に URL を取得するため、ライブラリのバージョン番号（.so.8 など）が変更されても自動的に対応します。
+また、ダウンロード後は MD5 チェックサムによる整合性検証も自動的に行います。
+
+#### 基本的な使い方
+
+```yaml
+- uses: shiguredo/github-actions/.github/actions/download-openh264@main
+  id: openh264
+  with:
+    platform_name: ubuntu-24.04_x86_64
+    openh264_version: 2.6.0
+```
+
+#### 入力パラメータ
+
+| 名前 | 説明 | 必須 | デフォルト |
+|------|------|------|------------|
+| `platform_name` | プラットフォーム名（例: `ubuntu-24.04_x86_64`, `macos_arm64`, `windows_x86_64`） | ✓ | - |
+| `openh264_version` | OpenH264のバージョン（例: `2.6.0`） | ✓ | - |
+
+#### 出力
+
+| 名前 | 説明 | 例 |
+|------|------|-----|
+| `openh264_path` | ダウンロードした OpenH264 ライブラリのパス | `/path/to/libopenh264.so` |
+
+#### 対応プラットフォーム
+
+| プラットフォーム | 値 | ライブラリファイル |
+|-----------------|-----|-------------------|
+| Ubuntu (x86_64) | `ubuntu-*_x86_64` | `libopenh264.so` |
+| Ubuntu (ARM64) | `ubuntu-*_armv8` | `libopenh264.so` |
+| macOS (ARM64) | `macos_arm64` | `libopenh264.dylib` |
+| Windows (x86_64) | `windows_x86_64` | `libopenh264.dll` |
+
+#### 使用例
+
+<details>
+<summary>Linux での OpenH264 ダウンロードと使用</summary>
+
+```yaml
+name: Build with OpenH264
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: shiguredo/github-actions/.github/actions/download-openh264@main
+        id: openh264
+        with:
+          platform_name: ubuntu-24.04_x86_64
+          openh264_version: 2.6.0
+      
+      - name: Build with OpenH264
+        run: |
+          export LD_LIBRARY_PATH="${{ steps.openh264.outputs.openh264_path }}:$LD_LIBRARY_PATH"
+          make build
+```
+
+</details>
+
+<details>
+<summary>マルチプラットフォーム対応ビルド</summary>
+
+```yaml
+name: Multi-platform Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: ubuntu-24.04_x86_64
+          - os: macos-latest
+            platform: macos_arm64
+          - os: windows-latest
+            platform: windows_x86_64
+    
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: shiguredo/github-actions/.github/actions/download-openh264@main
+        id: openh264
+        with:
+          platform_name: ${{ matrix.platform }}
+          openh264_version: 2.6.0
+      
+      - name: Use OpenH264
+        run: |
+          echo "OpenH264 library is at: ${{ steps.openh264.outputs.openh264_path }}"
 ```
 
 </details>

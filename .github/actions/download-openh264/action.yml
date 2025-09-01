@@ -1,0 +1,153 @@
+name: "Download OpenH264"
+description: "Download OpenH264 library for the platform"
+inputs:
+  platform_name:
+    description: "Platform name (e.g. ubuntu-24.04_x86_64, macos_arm64, windows_x86_64)"
+    required: true
+  openh264_version:
+    description: "OpenH264 version (e.g. 2.6.0)"
+    required: true
+outputs:
+  openh264_path:
+    description: "Path to the downloaded OpenH264 library"
+    value: ${{ steps.result.outputs.openh264_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download and setup OpenH264
+      id: result
+      shell: bash
+      run: |
+        VERSION="${{ inputs.openh264_version }}"
+
+        # GitHub Release から URL を動的に取得
+        echo "Fetching release information for v${VERSION}..."
+        RELEASE_INFO=$(gh release view "v${VERSION}" --repo cisco/openh264 2>/dev/null || true)
+        
+        if [[ -z "$RELEASE_INFO" ]]; then
+          echo "Error: Failed to fetch release information for v${VERSION}"
+          exit 1
+        fi
+
+        # プラットフォームごとの設定と URL 取得
+        case "${{ inputs.platform_name }}" in
+          ubuntu-*_x86_64)
+            URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux64.*\.so\.bz2" | head -1)
+            MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1)
+            TARGET="libopenh264.so"
+            ;;
+          ubuntu-*_armv8)
+            URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1)
+            MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1)
+            TARGET="libopenh264.so"
+            ;;
+          macos_arm64)
+            URL=$(echo "$RELEASE_INFO" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1)
+            MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1)
+            TARGET="libopenh264.dylib"
+            ;;
+          windows_x86_64)
+            # Windows の場合は PowerShell を使用
+            if [[ "$RUNNER_OS" == "Windows" ]]; then
+              URL=$(echo "$RELEASE_INFO" | grep -E "http.*win64.*\.dll\.bz2" | head -1)
+              MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*win64.*\.dll\.signed\.md5\.txt" | head -1)
+              if [[ -z "$URL" ]]; then
+                echo "Error: Could not find Windows x64 URL in release"
+                exit 1
+              fi
+              pwsh -Command "
+                \$url = '${URL}'
+                \$md5url = '${MD5_URL}'
+                Write-Host \"Downloading from: \$url\"
+                \$filename = \$url.Split('/')[-1]
+                Invoke-WebRequest -Uri \$url -OutFile \$filename
+                
+                # MD5チェック
+                if (\$md5url) {
+                  Write-Host \"Downloading MD5 checksum...\"
+                  Invoke-WebRequest -Uri \$md5url -OutFile \"md5.txt\"
+                  \$expectedMd5 = (Get-Content \"md5.txt\" -Raw).Trim().Split(' ')[0]
+                  \$actualMd5 = (Get-FileHash -Path \$filename -Algorithm MD5).Hash
+                  if (\$expectedMd5 -ne \$actualMd5) {
+                    Write-Host \"Error: MD5 checksum mismatch!\"
+                    Write-Host \"Expected: \$expectedMd5\"
+                    Write-Host \"Actual: \$actualMd5\"
+                    exit 1
+                  }
+                  Write-Host \"MD5 checksum verified: \$actualMd5\"
+                }
+                
+                7z e \$filename
+                \$dllName = \$filename -replace '\.bz2$', ''
+                Rename-Item -Path \$dllName -NewName 'libopenh264.dll'
+                \$path = Join-Path \$PWD 'libopenh264.dll'
+                Write-Host \"openh264_path=\$path\"
+                echo \"openh264_path=\$path\" >> \$env:GITHUB_OUTPUT
+              "
+              exit 0
+            else
+              echo "Error: Windows platform but not running on Windows"
+              exit 1
+            fi
+            ;;
+          *)
+            echo "Unknown platform: ${{ inputs.platform_name }}"
+            exit 1
+            ;;
+        esac
+
+        # Linux/macOS の場合の処理
+        if [[ "$RUNNER_OS" != "Windows" ]]; then
+          if [[ -z "$URL" ]]; then
+            echo "Error: Could not find URL for platform ${{ inputs.platform_name }} in release"
+            exit 1
+          fi
+          
+          echo "Downloading from: ${URL}"
+          curl -LO "${URL}"
+          
+          # ファイル名を URL から取得
+          FILENAME=$(basename "${URL}" .bz2)
+          
+          # MD5チェック
+          if [[ -n "$MD5_URL" ]]; then
+            echo "Downloading MD5 checksum..."
+            curl -LO "${MD5_URL}"
+            MD5_FILE=$(basename "${MD5_URL}")
+            
+            # MD5コマンドの違いを吸収
+            if command -v md5sum >/dev/null 2>&1; then
+              # Linux
+              EXPECTED_MD5=$(cut -d' ' -f1 < "${MD5_FILE}")
+              ACTUAL_MD5=$(md5sum "${FILENAME}.bz2" | cut -d' ' -f1)
+            elif command -v md5 >/dev/null 2>&1; then
+              # macOS
+              EXPECTED_MD5=$(cut -d' ' -f1 < "${MD5_FILE}")
+              ACTUAL_MD5=$(md5 -q "${FILENAME}.bz2")
+            else
+              echo "Warning: No MD5 command found, skipping checksum verification"
+              EXPECTED_MD5=""
+              ACTUAL_MD5=""
+            fi
+            
+            if [[ -n "$EXPECTED_MD5" ]] && [[ "$EXPECTED_MD5" != "$ACTUAL_MD5" ]]; then
+              echo "Error: MD5 checksum mismatch!"
+              echo "Expected: $EXPECTED_MD5"
+              echo "Actual: $ACTUAL_MD5"
+              exit 1
+            elif [[ -n "$EXPECTED_MD5" ]]; then
+              echo "MD5 checksum verified: $ACTUAL_MD5"
+            fi
+          fi
+          
+          echo "Extracting ${FILENAME}.bz2"
+          bzip2 -d "${FILENAME}.bz2"
+          
+          echo "Renaming to ${TARGET}"
+          mv "${FILENAME}" "${TARGET}"
+          
+          OPENH264_PATH="$(pwd)/${TARGET}"
+          echo "OpenH264 library path: ${OPENH264_PATH}"
+          echo "openh264_path=${OPENH264_PATH}" >> $GITHUB_OUTPUT
+        fi
