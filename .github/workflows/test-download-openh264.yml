@@ -38,13 +38,13 @@ jobs:
           #   expected_lib: libopenh264.so
           
           # macOS ARM64
-          - os: macos-latest
+          - os: macos-15
             platform: macos_arm64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dylib
           
           # Windows x86_64
-          - os: windows-latest
+          - os: windows-2025
             platform: windows_x86_64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dll
