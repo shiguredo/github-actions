@@ -73,9 +73,10 @@ runs:
 
         # GitHub Release から URL を動的に取得
         echo "Fetching release information for v${VERSION}..."
-        RELEASE_INFO=$(gh release view "v${VERSION}" --repo cisco/openh264 2>/dev/null || true)
+        # gh api を使って JSON 経由で安全に取得
+        RELEASE_BODY=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' 2>/dev/null || true)
         
-        if [[ -z "$RELEASE_INFO" ]]; then
+        if [[ -z "$RELEASE_BODY" ]]; then
           echo "Error: Failed to fetch release information for v${VERSION}"
           exit 1
         fi
@@ -83,25 +84,25 @@ runs:
         # プラットフォームごとの設定と URL 取得
         case "${{ inputs.platform_name }}" in
           ubuntu-*_x86_64)
-            URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           ubuntu-*_armv8)
-            URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           macos_arm64)
-            URL=$(echo "$RELEASE_INFO" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           windows_x86_64)
             # Windows の場合は PowerShell を使用
             if [[ "$RUNNER_OS" == "Windows" ]]; then
-              URL=$(echo "$RELEASE_INFO" | grep -E "http.*win64.*\.dll\.bz2" | head -1 | tr -d '\r')
-              MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*win64.*\.dll\.signed\.md5\.txt" | head -1 | tr -d '\r')
+              URL=$(echo "$RELEASE_BODY" | grep -E "http.*win64.*\.dll\.bz2" | head -1 | tr -d '\r')
+              MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*win64.*\.dll\.signed\.md5\.txt" | head -1 | tr -d '\r')
               if [[ -z "$URL" ]]; then
                 echo "Error: Could not find Windows x64 URL in release"
                 exit 1
