@@ -73,8 +73,10 @@ runs:
 
         # GitHub Release から URL を動的に取得
         echo "Fetching release information for v${VERSION}..."
-        # gh api を使って JSON 経由で安全に取得
-        if ! gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' > /dev/null 2>&1; then
+        # gh api を使って JSON 経由で安全に取得（一度だけ取得して変数に保存）
+        RELEASE_BODY=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' 2>/dev/null || echo "")
+        
+        if [[ -z "$RELEASE_BODY" ]]; then
           echo "Error: Failed to fetch release information for v${VERSION}"
           exit 1
         fi
@@ -82,18 +84,18 @@ runs:
         # プラットフォームごとの設定と URL 取得
         case "${{ inputs.platform_name }}" in
           ubuntu-*_x86_64)
-            URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           ubuntu-*_armv8)
-            URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           macos_arm64)
-            URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           *)
