@@ -57,9 +57,9 @@ runs:
         path: ${{ steps.setup.outputs.cache_dir }}
         key: openh264-${{ inputs.platform_name }}-${{ inputs.openh264_version }}
 
-    - name: Download and setup OpenH264
-      if: steps.cache.outputs.cache-hit != 'true'
-      id: download
+    - name: Download and setup OpenH264 (Linux/macOS)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+      id: download-unix
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -74,9 +74,7 @@ runs:
         # GitHub Release から URL を動的に取得
         echo "Fetching release information for v${VERSION}..."
         # gh api を使って JSON 経由で安全に取得
-        RELEASE_BODY=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' 2>/dev/null || true)
-        
-        if [[ -z "$RELEASE_BODY" ]]; then
+        if ! gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' > /dev/null 2>&1; then
           echo "Error: Failed to fetch release information for v${VERSION}"
           exit 1
         fi
@@ -84,69 +82,19 @@ runs:
         # プラットフォームごとの設定と URL 取得
         case "${{ inputs.platform_name }}" in
           ubuntu-*_x86_64)
-            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           ubuntu-*_armv8)
-            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           macos_arm64)
-            URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
-            ;;
-          windows_x86_64)
-            # Windows の場合は PowerShell を使用
-            if [[ "$RUNNER_OS" == "Windows" ]]; then
-              URL=$(echo "$RELEASE_BODY" | grep -E "http.*win64.*\.dll\.bz2" | head -1 | tr -d '\r')
-              MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*win64.*\.dll\.signed\.md5\.txt" | head -1 | tr -d '\r')
-              if [[ -z "$URL" ]]; then
-                echo "Error: Could not find Windows x64 URL in release"
-                exit 1
-              fi
-              pwsh -Command "
-                \$url = '${URL}'
-                \$md5url = '${MD5_URL}'
-                \$cacheDir = '${CACHE_DIR}'
-                \$libName = '${LIB_NAME}'
-                
-                Write-Host \"Downloading from: \$url\"
-                \$filename = \$url.Split('/')[-1]
-                Invoke-WebRequest -Uri \$url -OutFile \$filename
-                
-                # bz2ファイルを展開
-                7z e \$filename
-                \$dllName = \$filename -replace '\.bz2$', ''
-                
-                # MD5チェック（展開後のファイルに対して）
-                if (\$md5url) {
-                  Write-Host \"Downloading MD5 checksum...\"
-                  Invoke-WebRequest -Uri \$md5url -OutFile \"md5.txt\"
-                  # MD5ファイルが "MD5 (filename) = hash" 形式の場合に対応
-                  \$md5Content = Get-Content \"md5.txt\" -Raw
-                  \$expectedMd5 = (\$md5Content -split '=')[1].Trim().ToLower()
-                  \$actualMd5 = (Get-FileHash -Path \$dllName -Algorithm MD5).Hash.ToLower()
-                  if (\$expectedMd5 -ne \$actualMd5) {
-                    Write-Host \"Error: MD5 checksum mismatch!\"
-                    Write-Host \"Expected: \$expectedMd5\"
-                    Write-Host \"Actual: \$actualMd5\"
-                    exit 1
-                  }
-                  Write-Host \"MD5 checksum verified: \$actualMd5\"
-                }
-                
-                # キャッシュディレクトリにコピー
-                Copy-Item -Path \$dllName -Destination (Join-Path \$cacheDir \$libName) -Force
-                Write-Host \"Library cached to: \$(Join-Path \$cacheDir \$libName)\"
-              "
-              exit 0
-            else
-              echo "Error: Windows platform but not running on Windows"
-              exit 1
-            fi
             ;;
           *)
             echo "Unknown platform: ${{ inputs.platform_name }}"
@@ -154,59 +102,116 @@ runs:
             ;;
         esac
 
-        # Linux/macOS の場合の処理
-        if [[ "$RUNNER_OS" != "Windows" ]]; then
-          if [[ -z "$URL" ]]; then
-            echo "Error: Could not find URL for platform ${{ inputs.platform_name }} in release"
-            exit 1
-          fi
-          
-          echo "Downloading from: ${URL}"
-          curl -LO "${URL}"
-          
-          # ファイル名を URL から取得
-          FILENAME=$(basename "${URL}" .bz2)
-          
-          echo "Extracting ${FILENAME}.bz2"
-          bzip2 -d "${FILENAME}.bz2"
-          
-          # MD5チェック（展開後のファイルに対して）
-          if [[ -n "$MD5_URL" ]]; then
-            echo "Downloading MD5 checksum..."
-            curl -LO "${MD5_URL}"
-            MD5_FILE=$(basename "${MD5_URL}")
-            
-            # MD5コマンドの違いを吸収
-            if command -v md5sum >/dev/null 2>&1; then
-              # Linux
-              # MD5ファイルが "MD5 (filename) = hash" 形式の場合に対応
-              EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
-              ACTUAL_MD5=$(md5sum "${FILENAME}" | cut -d' ' -f1)
-            elif command -v md5 >/dev/null 2>&1; then
-              # macOS
-              # MD5ファイルが "MD5 (filename) = hash" 形式の場合に対応
-              EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
-              ACTUAL_MD5=$(md5 -q "${FILENAME}")
-            else
-              echo "Warning: No MD5 command found, skipping checksum verification"
-              EXPECTED_MD5=""
-              ACTUAL_MD5=""
-            fi
-            
-            if [[ -n "$EXPECTED_MD5" ]] && [[ "$EXPECTED_MD5" != "$ACTUAL_MD5" ]]; then
-              echo "Error: MD5 checksum mismatch!"
-              echo "Expected: $EXPECTED_MD5"
-              echo "Actual: $ACTUAL_MD5"
-              exit 1
-            elif [[ -n "$EXPECTED_MD5" ]]; then
-              echo "MD5 checksum verified: $ACTUAL_MD5"
-            fi
-          fi
-          
-          # キャッシュディレクトリにコピー
-          cp "${FILENAME}" "${CACHE_DIR}/${TARGET}"
-          echo "Library cached to: ${CACHE_DIR}/${TARGET}"
+        if [[ -z "$URL" ]]; then
+          echo "Error: Could not find URL for platform ${{ inputs.platform_name }} in release"
+          exit 1
         fi
+        
+        echo "Downloading from: ${URL}"
+        curl -LO "${URL}"
+        
+        # ファイル名を URL から取得
+        FILENAME=$(basename "${URL}" .bz2)
+        
+        echo "Extracting ${FILENAME}.bz2"
+        bzip2 -d "${FILENAME}.bz2"
+        
+        # MD5チェック（展開後のファイルに対して）
+        if [[ -n "$MD5_URL" ]]; then
+          echo "Downloading MD5 checksum..."
+          curl -LO "${MD5_URL}"
+          MD5_FILE=$(basename "${MD5_URL}")
+          
+          # MD5コマンドの違いを吸収
+          if command -v md5sum >/dev/null 2>&1; then
+            # Linux
+            EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
+            ACTUAL_MD5=$(md5sum "${FILENAME}" | cut -d' ' -f1)
+          elif command -v md5 >/dev/null 2>&1; then
+            # macOS
+            EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
+            ACTUAL_MD5=$(md5 -q "${FILENAME}")
+          else
+            echo "Warning: No MD5 command found, skipping checksum verification"
+            EXPECTED_MD5=""
+            ACTUAL_MD5=""
+          fi
+          
+          if [[ -n "$EXPECTED_MD5" ]] && [[ "$EXPECTED_MD5" != "$ACTUAL_MD5" ]]; then
+            echo "Error: MD5 checksum mismatch!"
+            echo "Expected: $EXPECTED_MD5"
+            echo "Actual: $ACTUAL_MD5"
+            exit 1
+          elif [[ -n "$EXPECTED_MD5" ]]; then
+            echo "MD5 checksum verified: $ACTUAL_MD5"
+          fi
+        fi
+        
+        # キャッシュディレクトリにコピー
+        cp "${FILENAME}" "${CACHE_DIR}/${TARGET}"
+        echo "Library cached to: ${CACHE_DIR}/${TARGET}"
+
+    - name: Download and setup OpenH264 (Windows)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      id: download-windows
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        $VERSION = "${{ inputs.openh264_version }}"
+        $CACHE_DIR = "${{ steps.setup.outputs.cache_dir }}"
+        $LIB_NAME = "${{ steps.setup.outputs.lib_name }}"
+
+        # キャッシュディレクトリを作成
+        New-Item -ItemType Directory -Force -Path $CACHE_DIR | Out-Null
+
+        # GitHub Release から URL を動的に取得
+        Write-Host "Fetching release information for v$VERSION..."
+        try {
+          $releaseBody = gh api repos/cisco/openh264/releases/tags/v$VERSION --jq '.body'
+        } catch {
+          Write-Host "Error: Failed to fetch release information for v$VERSION"
+          exit 1
+        }
+
+        # Windows用のURLを取得
+        $URL = $releaseBody | Select-String -Pattern "http.*win64.*\.dll\.bz2" | Select-Object -First 1
+        if ($URL) { $URL = $URL.Line.Trim() }
+        $MD5_URL = $releaseBody | Select-String -Pattern "http.*win64.*\.dll\.signed\.md5\.txt" | Select-Object -First 1
+        if ($MD5_URL) { $MD5_URL = $MD5_URL.Line.Trim() }
+
+        if (-not $URL) {
+          Write-Host "Error: Could not find Windows x64 URL in release"
+          exit 1
+        }
+
+        Write-Host "Downloading from: $URL"
+        $filename = Split-Path $URL -Leaf
+        Invoke-WebRequest -Uri $URL -OutFile $filename
+
+        # bz2ファイルを展開
+        7z e $filename
+        $dllName = $filename -replace '\.bz2$', ''
+
+        # MD5チェック（展開後のファイルに対して）
+        if ($MD5_URL) {
+          Write-Host "Downloading MD5 checksum..."
+          Invoke-WebRequest -Uri $MD5_URL -OutFile "md5.txt"
+          $md5Content = Get-Content "md5.txt" -Raw
+          $expectedMd5 = ($md5Content -split '=')[1].Trim().ToLower()
+          $actualMd5 = (Get-FileHash -Path $dllName -Algorithm MD5).Hash.ToLower()
+          if ($expectedMd5 -ne $actualMd5) {
+            Write-Host "Error: MD5 checksum mismatch!"
+            Write-Host "Expected: $expectedMd5"
+            Write-Host "Actual: $actualMd5"
+            exit 1
+          }
+          Write-Host "MD5 checksum verified: $actualMd5"
+        }
+
+        # キャッシュディレクトリにコピー
+        Copy-Item -Path $dllName -Destination (Join-Path $CACHE_DIR $LIB_NAME) -Force
+        Write-Host "Library cached to: $(Join-Path $CACHE_DIR $LIB_NAME)"
 
     - name: Copy from cache to working directory
       id: copy
