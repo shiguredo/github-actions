@@ -62,6 +62,8 @@ runs:
       if: steps.cache.outputs.cache-hit != 'true'
       id: download
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         VERSION="${{ inputs.openh264_version }}"
         CACHE_DIR="${{ steps.setup.outputs.cache_dir }}"
