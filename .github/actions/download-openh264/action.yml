@@ -32,12 +32,11 @@ runs:
         
         # ライブラリファイル名を決定
         case "${{ inputs.platform_name }}" in
-          ubuntu-*|macos_arm64)
-            if [[ "${{ inputs.platform_name }}" == macos_arm64 ]]; then
-              LIB_NAME="libopenh264.dylib"
-            else
-              LIB_NAME="libopenh264.so"
-            fi
+          ubuntu-*_x86_64|ubuntu-*_armv8)
+            LIB_NAME="libopenh264.so"
+            ;;
+          macos_arm64)
+            LIB_NAME="libopenh264.dylib"
             ;;
           windows_x86_64)
             LIB_NAME="libopenh264.dll"
