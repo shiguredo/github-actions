@@ -7,19 +7,68 @@ inputs:
   openh264_version:
     description: "OpenH264 version (e.g. 2.6.0)"
     required: true
+  use-cache:
+    description: "Whether to use cache for downloaded library (true/false)"
+    required: false
+    default: 'false'
 outputs:
   openh264_path:
     description: "Path to the downloaded OpenH264 library"
-    value: ${{ steps.result.outputs.openh264_path }}
+    value: ${{ steps.output.outputs.openh264_path }}
+  cache-hit:
+    description: "Whether the cache was hit"
+    value: ${{ steps.cache.outputs.cache-hit }}
 
 runs:
   using: "composite"
   steps:
+    - name: Setup cache directory
+      id: setup
+      shell: bash
+      run: |
+        # キャッシュディレクトリを設定
+        CACHE_DIR="${HOME}/.openh264-cache/${{ inputs.platform_name }}-${{ inputs.openh264_version }}"
+        echo "cache_dir=${CACHE_DIR}" >> $GITHUB_OUTPUT
+        
+        # ライブラリファイル名を決定
+        case "${{ inputs.platform_name }}" in
+          ubuntu-*|macos_arm64)
+            if [[ "${{ inputs.platform_name }}" == macos_arm64 ]]; then
+              LIB_NAME="libopenh264.dylib"
+            else
+              LIB_NAME="libopenh264.so"
+            fi
+            ;;
+          windows_x86_64)
+            LIB_NAME="libopenh264.dll"
+            ;;
+          *)
+            echo "Unknown platform: ${{ inputs.platform_name }}"
+            exit 1
+            ;;
+        esac
+        echo "lib_name=${LIB_NAME}" >> $GITHUB_OUTPUT
+        echo "lib_path=${CACHE_DIR}/${LIB_NAME}" >> $GITHUB_OUTPUT
+
+    - name: Cache OpenH264
+      if: inputs.use-cache == 'true'
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.setup.outputs.cache_dir }}
+        key: openh264-${{ inputs.platform_name }}-${{ inputs.openh264_version }}
+
     - name: Download and setup OpenH264
-      id: result
+      if: steps.cache.outputs.cache-hit != 'true'
+      id: download
       shell: bash
       run: |
         VERSION="${{ inputs.openh264_version }}"
+        CACHE_DIR="${{ steps.setup.outputs.cache_dir }}"
+        LIB_NAME="${{ steps.setup.outputs.lib_name }}"
+
+        # キャッシュディレクトリを作成
+        mkdir -p "${CACHE_DIR}"
 
         # GitHub Release から URL を動的に取得
         echo "Fetching release information for v${VERSION}..."
@@ -35,17 +84,17 @@ runs:
           ubuntu-*_x86_64)
             URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux64.*\.so\.bz2" | head -1)
             MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1)
-            TARGET="libopenh264.so"
+            TARGET="${LIB_NAME}"
             ;;
           ubuntu-*_armv8)
             URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1)
             MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1)
-            TARGET="libopenh264.so"
+            TARGET="${LIB_NAME}"
             ;;
           macos_arm64)
             URL=$(echo "$RELEASE_INFO" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1)
             MD5_URL=$(echo "$RELEASE_INFO" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1)
-            TARGET="libopenh264.dylib"
+            TARGET="${LIB_NAME}"
             ;;
           windows_x86_64)
             # Windows の場合は PowerShell を使用
@@ -59,6 +108,9 @@ runs:
               pwsh -Command "
                 \$url = '${URL}'
                 \$md5url = '${MD5_URL}'
+                \$cacheDir = '${CACHE_DIR}'
+                \$libName = '${LIB_NAME}'
+                
                 Write-Host \"Downloading from: \$url\"
                 \$filename = \$url.Split('/')[-1]
                 Invoke-WebRequest -Uri \$url -OutFile \$filename
@@ -80,10 +132,10 @@ runs:
                 
                 7z e \$filename
                 \$dllName = \$filename -replace '\.bz2$', ''
-                Rename-Item -Path \$dllName -NewName 'libopenh264.dll'
-                \$path = Join-Path \$PWD 'libopenh264.dll'
-                Write-Host \"openh264_path=\$path\"
-                echo \"openh264_path=\$path\" >> \$env:GITHUB_OUTPUT
+                
+                # キャッシュディレクトリにコピー
+                Copy-Item -Path \$dllName -Destination (Join-Path \$cacheDir \$libName) -Force
+                Write-Host \"Library cached to: \$(Join-Path \$cacheDir \$libName)\"
               "
               exit 0
             else
@@ -144,10 +196,33 @@ runs:
           echo "Extracting ${FILENAME}.bz2"
           bzip2 -d "${FILENAME}.bz2"
           
-          echo "Renaming to ${TARGET}"
-          mv "${FILENAME}" "${TARGET}"
-          
-          OPENH264_PATH="$(pwd)/${TARGET}"
-          echo "OpenH264 library path: ${OPENH264_PATH}"
-          echo "openh264_path=${OPENH264_PATH}" >> $GITHUB_OUTPUT
+          # キャッシュディレクトリにコピー
+          cp "${FILENAME}" "${CACHE_DIR}/${TARGET}"
+          echo "Library cached to: ${CACHE_DIR}/${TARGET}"
         fi
+
+    - name: Copy from cache to working directory
+      id: copy
+      shell: bash
+      run: |
+        CACHE_DIR="${{ steps.setup.outputs.cache_dir }}"
+        LIB_NAME="${{ steps.setup.outputs.lib_name }}"
+        LIB_PATH="${{ steps.setup.outputs.lib_path }}"
+        
+        # キャッシュからワーキングディレクトリにコピー
+        if [[ -f "${LIB_PATH}" ]]; then
+          cp "${LIB_PATH}" "./${LIB_NAME}"
+          echo "Copied ${LIB_NAME} from cache to working directory"
+        else
+          echo "Error: Library not found in cache: ${LIB_PATH}"
+          exit 1
+        fi
+
+    - name: Set output
+      id: output
+      shell: bash
+      run: |
+        LIB_NAME="${{ steps.setup.outputs.lib_name }}"
+        OPENH264_PATH="$(pwd)/${LIB_NAME}"
+        echo "OpenH264 library path: ${OPENH264_PATH}"
+        echo "openh264_path=${OPENH264_PATH}" >> $GITHUB_OUTPUT

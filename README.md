@@ -120,6 +120,8 @@ jobs:
 このアクションは GitHub CLI (`gh`) を使用して cisco/openh264 の公式リリースから動的に URL を取得するため、ライブラリのバージョン番号（.so.8 など）が変更されても自動的に対応します。
 また、ダウンロード後は MD5 チェックサムによる整合性検証も自動的に行います。
 
+オプションでキャッシュ機能を有効にすることで、同じバージョンのライブラリを再ダウンロードすることなく高速にビルドを実行できます。
+
 #### 基本的な使い方
 
 ```yaml
@@ -136,12 +138,14 @@ jobs:
 |------|------|------|------------|
 | `platform_name` | プラットフォーム名（例: `ubuntu-24.04_x86_64`, `macos_arm64`, `windows_x86_64`） | ✓ | - |
 | `openh264_version` | OpenH264のバージョン（例: `2.6.0`） | ✓ | - |
+| `use-cache` | ダウンロードしたライブラリをキャッシュするか（`true`/`false`） | - | `false` |
 
 #### 出力
 
 | 名前 | 説明 | 例 |
 |------|------|-----|
 | `openh264_path` | ダウンロードした OpenH264 ライブラリのパス | `/path/to/libopenh264.so` |
+| `cache-hit` | キャッシュがヒットしたか | `true` または `false` |
 
 #### 対応プラットフォーム
 
@@ -215,6 +219,43 @@ jobs:
       - name: Use OpenH264
         run: |
           echo "OpenH264 library is at: ${{ steps.openh264.outputs.openh264_path }}"
+```
+
+</details>
+
+<details>
+<summary>キャッシュを有効にした高速ビルド</summary>
+
+```yaml
+name: Cached Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: shiguredo/github-actions/.github/actions/download-openh264@main
+        id: openh264
+        with:
+          platform_name: ubuntu-24.04_x86_64
+          openh264_version: 2.6.0
+          use-cache: 'true'
+      
+      - name: Show cache status
+        run: |
+          if [[ "${{ steps.openh264.outputs.cache-hit }}" == "true" ]]; then
+            echo "OpenH264 was loaded from cache"
+          else
+            echo "OpenH264 was downloaded and cached"
+          fi
+      
+      - name: Build with OpenH264
+        run: |
+          export LD_LIBRARY_PATH="${{ steps.openh264.outputs.openh264_path }}:$LD_LIBRARY_PATH"
+          make build
 ```
 
 </details>
