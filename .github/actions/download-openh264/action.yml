@@ -161,7 +161,9 @@ runs:
         GH_TOKEN: ${{ github.token }}
       run: |
         $VERSION = "${{ inputs.openh264_version }}"
-        $CACHE_DIR = "${{ steps.setup.outputs.cache_dir }}"
+        # Unix スタイルのパスを Windows スタイルに変換
+        $CACHE_DIR_UNIX = "${{ steps.setup.outputs.cache_dir }}"
+        $CACHE_DIR = $CACHE_DIR_UNIX -replace '^/c/', 'C:\' -replace '/', '\'
         $LIB_NAME = "${{ steps.setup.outputs.lib_name }}"
 
         # キャッシュディレクトリを作成
@@ -213,9 +215,11 @@ runs:
         }
 
         # キャッシュディレクトリにコピー
-        $destPath = "$CACHE_DIR/$LIB_NAME"
+        $destPath = Join-Path $CACHE_DIR $LIB_NAME
         Copy-Item -Path $dllName -Destination $destPath -Force
-        Write-Host "Library cached to: $destPath"
+        # Unix スタイルのパスで表示
+        $destPathUnix = "$CACHE_DIR_UNIX/$LIB_NAME"
+        Write-Host "Library cached to: $destPathUnix"
 
     - name: Copy from cache to working directory
       id: copy
