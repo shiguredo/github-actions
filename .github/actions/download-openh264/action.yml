@@ -117,12 +117,18 @@ runs:
                 \$filename = \$url.Split('/')[-1]
                 Invoke-WebRequest -Uri \$url -OutFile \$filename
                 
-                # MD5チェック
+                # bz2ファイルを展開
+                7z e \$filename
+                \$dllName = \$filename -replace '\.bz2$', ''
+                
+                # MD5チェック（展開後のファイルに対して）
                 if (\$md5url) {
                   Write-Host \"Downloading MD5 checksum...\"
                   Invoke-WebRequest -Uri \$md5url -OutFile \"md5.txt\"
-                  \$expectedMd5 = (Get-Content \"md5.txt\" -Raw).Trim().Split(' ')[0]
-                  \$actualMd5 = (Get-FileHash -Path \$filename -Algorithm MD5).Hash
+                  # MD5ファイルが "MD5 (filename) = hash" 形式の場合に対応
+                  \$md5Content = Get-Content \"md5.txt\" -Raw
+                  \$expectedMd5 = (\$md5Content -split '=')[1].Trim().ToLower()
+                  \$actualMd5 = (Get-FileHash -Path \$dllName -Algorithm MD5).Hash.ToLower()
                   if (\$expectedMd5 -ne \$actualMd5) {
                     Write-Host \"Error: MD5 checksum mismatch!\"
                     Write-Host \"Expected: \$expectedMd5\"
@@ -131,9 +137,6 @@ runs:
                   }
                   Write-Host \"MD5 checksum verified: \$actualMd5\"
                 }
-                
-                7z e \$filename
-                \$dllName = \$filename -replace '\.bz2$', ''
                 
                 # キャッシュディレクトリにコピー
                 Copy-Item -Path \$dllName -Destination (Join-Path \$cacheDir \$libName) -Force
@@ -164,7 +167,10 @@ runs:
           # ファイル名を URL から取得
           FILENAME=$(basename "${URL}" .bz2)
           
-          # MD5チェック
+          echo "Extracting ${FILENAME}.bz2"
+          bzip2 -d "${FILENAME}.bz2"
+          
+          # MD5チェック（展開後のファイルに対して）
           if [[ -n "$MD5_URL" ]]; then
             echo "Downloading MD5 checksum..."
             curl -LO "${MD5_URL}"
@@ -173,12 +179,14 @@ runs:
             # MD5コマンドの違いを吸収
             if command -v md5sum >/dev/null 2>&1; then
               # Linux
-              EXPECTED_MD5=$(cut -d' ' -f1 < "${MD5_FILE}")
-              ACTUAL_MD5=$(md5sum "${FILENAME}.bz2" | cut -d' ' -f1)
+              # MD5ファイルが "MD5 (filename) = hash" 形式の場合に対応
+              EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
+              ACTUAL_MD5=$(md5sum "${FILENAME}" | cut -d' ' -f1)
             elif command -v md5 >/dev/null 2>&1; then
               # macOS
-              EXPECTED_MD5=$(cut -d' ' -f1 < "${MD5_FILE}")
-              ACTUAL_MD5=$(md5 -q "${FILENAME}.bz2")
+              # MD5ファイルが "MD5 (filename) = hash" 形式の場合に対応
+              EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
+              ACTUAL_MD5=$(md5 -q "${FILENAME}")
             else
               echo "Warning: No MD5 command found, skipping checksum verification"
               EXPECTED_MD5=""
@@ -194,9 +202,6 @@ runs:
               echo "MD5 checksum verified: $ACTUAL_MD5"
             fi
           fi
-          
-          echo "Extracting ${FILENAME}.bz2"
-          bzip2 -d "${FILENAME}.bz2"
           
           # キャッシュディレクトリにコピー
           cp "${FILENAME}" "${CACHE_DIR}/${TARGET}"
