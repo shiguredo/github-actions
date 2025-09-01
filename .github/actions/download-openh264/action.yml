@@ -200,7 +200,8 @@ runs:
           Write-Host "Downloading MD5 checksum..."
           Invoke-WebRequest -Uri $MD5_URL -OutFile "md5.txt"
           $md5Content = Get-Content "md5.txt" -Raw
-          $expectedMd5 = ($md5Content -split '=')[1].Trim().ToLower()
+          # MD5ファイル形式: "md5 *filename" から md5 部分を抽出
+          $expectedMd5 = ($md5Content.Trim() -split '\s+')[0].ToLower()
           $actualMd5 = (Get-FileHash -Path $dllName -Algorithm MD5).Hash.ToLower()
           if ($expectedMd5 -ne $actualMd5) {
             Write-Host "Error: MD5 checksum mismatch!"
