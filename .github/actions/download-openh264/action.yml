@@ -14,7 +14,7 @@ inputs:
 outputs:
   openh264_path:
     description: "Path to the downloaded OpenH264 library"
-    value: ${{ steps.output.outputs.openh264_path }}
+    value: ${{ steps.output-unix.outputs.openh264_path || steps.output-windows.outputs.openh264_path }}
   cache-hit:
     description: "Whether the cache was hit"
     value: ${{ steps.cache.outputs.cache-hit }}
@@ -59,7 +59,7 @@ runs:
 
     - name: Download and setup OpenH264 (Linux/macOS)
       if: steps.cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-      id: download-unix
+      id: download-linux-macos
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -161,9 +161,9 @@ runs:
         GH_TOKEN: ${{ github.token }}
       run: |
         $VERSION = "${{ inputs.openh264_version }}"
-        # Unix スタイルのパスを Windows スタイルに変換
-        $CACHE_DIR_UNIX = "${{ steps.setup.outputs.cache_dir }}"
-        $CACHE_DIR = $CACHE_DIR_UNIX -replace '^/c/', 'C:\' -replace '/', '\'
+        # bash からのパスを Windows スタイルに変換
+        $CACHE_DIR_BASH = "${{ steps.setup.outputs.cache_dir }}"
+        $CACHE_DIR = $CACHE_DIR_BASH -replace '^/c/', 'C:\' -replace '/', '\'
         $LIB_NAME = "${{ steps.setup.outputs.lib_name }}"
 
         # キャッシュディレクトリを作成
@@ -217,9 +217,9 @@ runs:
         # キャッシュディレクトリにコピー
         $destPath = Join-Path $CACHE_DIR $LIB_NAME
         Copy-Item -Path $dllName -Destination $destPath -Force
-        # Unix スタイルのパスで表示
-        $destPathUnix = "$CACHE_DIR_UNIX/$LIB_NAME"
-        Write-Host "Library cached to: $destPathUnix"
+        # bash 形式のパスで表示（後続の bash ステップとの互換性のため）
+        $destPathBash = "$CACHE_DIR_BASH/$LIB_NAME"
+        Write-Host "Library cached to: $destPathBash"
 
     - name: Copy from cache to working directory
       id: copy
@@ -238,11 +238,22 @@ runs:
           exit 1
         fi
 
-    - name: Set output
-      id: output
+    - name: Set output (Ubuntu/macOS)
+      if: runner.os != 'Windows'
+      id: output-unix
       shell: bash
       run: |
         LIB_NAME="${{ steps.setup.outputs.lib_name }}"
         OPENH264_PATH="$(pwd)/${LIB_NAME}"
         echo "OpenH264 library path: ${OPENH264_PATH}"
         echo "openh264_path=${OPENH264_PATH}" >> $GITHUB_OUTPUT
+    
+    - name: Set output (Windows)
+      if: runner.os == 'Windows'
+      id: output-windows
+      shell: pwsh
+      run: |
+        $LIB_NAME = "${{ steps.setup.outputs.lib_name }}"
+        $OPENH264_PATH = Join-Path (Get-Location) $LIB_NAME
+        Write-Host "OpenH264 library path: $OPENH264_PATH"
+        echo "openh264_path=$OPENH264_PATH" >> $env:GITHUB_OUTPUT
