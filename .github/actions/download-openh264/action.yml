@@ -213,8 +213,9 @@ runs:
         }
 
         # キャッシュディレクトリにコピー
-        Copy-Item -Path $dllName -Destination (Join-Path $CACHE_DIR $LIB_NAME) -Force
-        Write-Host "Library cached to: $(Join-Path $CACHE_DIR $LIB_NAME)"
+        $destPath = "$CACHE_DIR/$LIB_NAME"
+        Copy-Item -Path $dllName -Destination $destPath -Force
+        Write-Host "Library cached to: $destPath"
 
     - name: Copy from cache to working directory
       id: copy
