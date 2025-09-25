@@ -38,14 +38,29 @@ jobs:
           #   expected_lib: libopenh264.so
           
           # macOS ARM64
+          # macos だけの場合は最新の 15 を使う
           - os: macos-15
             platform: macos_arm64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dylib
           
+          # macosOS 15 ARM64
+          - os: macos-15
+            platform: macos-15_arm64
+            openh264_version: "2.6.0"
+            expected_lib: libopenh264.dylib
+          
           # Windows x86_64
+          # windows だけの場合は最新の 2025 を使う
           - os: windows-2025
             platform: windows_x86_64
+            openh264_version: "2.6.0"
+            expected_lib: libopenh264.dll
+
+          
+          # Windows 2025 x86_64
+          - os: windows-2025
+            platform: windows-2025_x86_64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dll
           
