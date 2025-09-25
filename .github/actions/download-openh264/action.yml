@@ -10,7 +10,7 @@ inputs:
   use-cache:
     description: "Whether to use cache for downloaded library (true/false)"
     required: false
-    default: 'false'
+    default: "false"
 outputs:
   openh264_path:
     description: "Path to the downloaded OpenH264 library"
@@ -29,14 +29,20 @@ runs:
         # キャッシュディレクトリを設定
         CACHE_DIR="${HOME}/.openh264-cache/${{ inputs.platform_name }}-${{ inputs.openh264_version }}"
         echo "cache_dir=${CACHE_DIR}" >> $GITHUB_OUTPUT
-        
+
         # ライブラリファイル名を決定
         case "${{ inputs.platform_name }}" in
           ubuntu-*_x86_64|ubuntu-*_armv8)
             LIB_NAME="libopenh264.so"
             ;;
+          macos-*_arm64)
+            LIB_NAME="libopenh264.dylib"
+            ;;
           macos_arm64)
             LIB_NAME="libopenh264.dylib"
+            ;;
+          windows-*_x86_64)
+            LIB_NAME="libopenh264.dll"
             ;;
           windows_x86_64)
             LIB_NAME="libopenh264.dll"
@@ -75,7 +81,7 @@ runs:
         echo "Fetching release information for v${VERSION}..."
         # gh api を使って JSON 経由で安全に取得（一度だけ取得して変数に保存）
         RELEASE_BODY=$(gh api repos/cisco/openh264/releases/tags/v${VERSION} --jq '.body' 2>/dev/null || echo "")
-        
+
         if [[ -z "$RELEASE_BODY" ]]; then
           echo "Error: Failed to fetch release information for v${VERSION}"
           exit 1
@@ -93,6 +99,11 @@ runs:
             MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
+          macos-*_arm64)
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            TARGET="${LIB_NAME}"
+            ;;
           macos_arm64)
             URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
             MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
@@ -108,16 +119,16 @@ runs:
           echo "Error: Could not find URL for platform ${{ inputs.platform_name }} in release"
           exit 1
         fi
-        
+
         echo "Downloading from: ${URL}"
         curl -LO "${URL}"
-        
+
         # ファイル名を URL から取得
         FILENAME=$(basename "${URL}" .bz2)
-        
+
         echo "Extracting ${FILENAME}.bz2"
         bzip2 -d "${FILENAME}.bz2"
-        
+
         # MD5チェック（展開後のファイルに対して）
         if [[ -n "$MD5_URL" ]]; then
           echo "Downloading MD5 checksum..."
@@ -148,7 +159,7 @@ runs:
             echo "MD5 checksum verified: $ACTUAL_MD5"
           fi
         fi
-        
+
         # キャッシュディレクトリにコピー
         cp "${FILENAME}" "${CACHE_DIR}/${TARGET}"
         echo "Library cached to: ${CACHE_DIR}/${TARGET}"
@@ -228,7 +239,7 @@ runs:
         CACHE_DIR="${{ steps.setup.outputs.cache_dir }}"
         LIB_NAME="${{ steps.setup.outputs.lib_name }}"
         LIB_PATH="${{ steps.setup.outputs.lib_path }}"
-        
+
         # キャッシュからワーキングディレクトリにコピー
         if [[ -f "${LIB_PATH}" ]]; then
           cp "${LIB_PATH}" "./${LIB_NAME}"
@@ -247,7 +258,7 @@ runs:
         OPENH264_PATH="$(pwd)/${LIB_NAME}"
         echo "OpenH264 library path: ${OPENH264_PATH}"
         echo "openh264_path=${OPENH264_PATH}" >> $GITHUB_OUTPUT
-    
+
     - name: Set output (Windows)
       if: runner.os == 'Windows'
       id: output-windows
