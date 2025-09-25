@@ -35,16 +35,12 @@ runs:
           ubuntu-*_x86_64|ubuntu-*_armv8)
             LIB_NAME="libopenh264.so"
             ;;
-          macos-*_arm64)
             LIB_NAME="libopenh264.dylib"
             ;;
-          macos_arm64)
+          macos_arm64 | macos-*_arm64)
             LIB_NAME="libopenh264.dylib"
             ;;
-          windows-*_x86_64)
-            LIB_NAME="libopenh264.dll"
-            ;;
-          windows_x86_64)
+          windows_x86_64 | windows-*_x86_64)
             LIB_NAME="libopenh264.dll"
             ;;
           *)
