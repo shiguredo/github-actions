@@ -153,8 +153,8 @@ jobs:
 |-----------------|-----|-------------------|
 | Ubuntu (x86_64) | `ubuntu-*_x86_64` | `libopenh264.so` |
 | Ubuntu (ARM64) | `ubuntu-*_armv8` | `libopenh264.so` |
-| macOS (ARM64) | `macos_arm64` or `macos-*_arm64 | `libopenh264.dylib` |
-| Windows (x86_64) | `windows_x86_64` or `windows-*_x86_64 | `libopenh264.dll` |
+| macOS (ARM64) | `macos_arm64` or `macos-*_arm64` | `libopenh264.dylib` |
+| Windows (x86_64) | `windows_x86_64` or `windows-*_x86_64` | `libopenh264.dll` |
 
 #### 使用例
 
