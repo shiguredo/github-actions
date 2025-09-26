@@ -35,8 +35,6 @@ runs:
           ubuntu-*_x86_64|ubuntu-*_armv8)
             LIB_NAME="libopenh264.so"
             ;;
-            LIB_NAME="libopenh264.dylib"
-            ;;
           macos_arm64 | macos-*_arm64)
             LIB_NAME="libopenh264.dylib"
             ;;
