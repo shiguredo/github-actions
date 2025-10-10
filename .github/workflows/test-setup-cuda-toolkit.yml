@@ -114,9 +114,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Test Setup CUDA Action with cache
+      - name: Test Setup CUDA Toolkit Action with cache
         id: setup-cuda
-        uses: ./.github/actions/setup-cuda
+        uses: ./.github/actions/setup-cuda-toolkit
         with:
           cuda_version: "12.8.1"
           platform: windows
