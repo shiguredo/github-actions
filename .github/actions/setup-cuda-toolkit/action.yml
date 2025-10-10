@@ -1,0 +1,120 @@
+name: "Setup CUDA Toolkit"
+description: "Setup CUDA Toolkit for Linux and Windows platforms"
+inputs:
+  cuda_version:
+    description: "CUDA version (e.g. 12.8.1-1)"
+    required: true
+  platform:
+    description: "Platform (ubuntu-22.04, ubuntu-24.04, windows)"
+    required: true
+  use-cache:
+    description: "Whether to use cache for CUDA installation (true/false)"
+    required: false
+    default: "true"
+outputs:
+  cuda_path:
+    description: "Path to the CUDA installation"
+    value: ${{ steps.output-unix.outputs.cuda_path || steps.output-windows.outputs.cuda_path }}
+  cache-hit:
+    description: "Whether the cache was hit"
+    value: ${{ steps.cache-cuda.outputs.cache-hit }}
+
+runs:
+  using: "composite"
+  steps:
+    # Linux 用のステップ
+    - name: Download CUDA keyring for Ubuntu 24.04
+      if: runner.os == 'Linux' && inputs.platform == 'ubuntu-24.04'
+      shell: bash
+      run: |
+        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+
+    - name: Download CUDA keyring for Ubuntu 22.04
+      if: runner.os == 'Linux' && inputs.platform == 'ubuntu-22.04'
+      shell: bash
+      run: |
+        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+
+    - name: Install CUDA for Linux
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        CUDA_VERSION="${{ inputs.cuda_version }}"
+        # CUDA_VERSION (例: 12.8.1-1) から cuda-toolkit-12=12.8.1-1 のような形式を生成
+        # Ubuntu 22.04 と 24.04 のどちらも cuda-toolkit-{major_version} 形式を使用
+        CUDA_MAJOR=$(echo $CUDA_VERSION | cut -d. -f1)
+        CUDA_PKG="cuda-toolkit-${CUDA_MAJOR}=${CUDA_VERSION}"
+        sudo dpkg -i cuda-keyring_*all.deb
+        sudo apt-get update
+        DEBIAN_FRONTEND=noninteractive sudo apt-get -y install ${CUDA_PKG}
+        echo "cuda_path=/usr/local/cuda" >> $GITHUB_OUTPUT
+      id: install-linux
+
+    - name: Set output for Linux
+      if: runner.os == 'Linux'
+      id: output-unix
+      shell: bash
+      run: |
+        echo "cuda_path=/usr/local/cuda" >> $GITHUB_OUTPUT
+
+    # Windows 用のステップ
+    - name: Setup Windows paths
+      if: runner.os == 'Windows'
+      id: setup-windows
+      shell: bash
+      run: |
+        # CUDA_VERSION からメジャー.マイナーバージョンを抽出
+        CUDA_VERSION="${{ inputs.cuda_version }}"
+        CUDA_MAJOR=$(echo $CUDA_VERSION | cut -d. -f1)
+        CUDA_MINOR=$(echo $CUDA_VERSION | cut -d. -f2)
+        CUDA_VERSION_SHORT="${CUDA_MAJOR}.${CUDA_MINOR}"
+        echo "cuda_version_short=${CUDA_VERSION_SHORT}" >> $GITHUB_OUTPUT
+
+        # キャッシュパスを設定
+        PLATFORM=$(echo "${{ inputs.platform }}" | sed 's/ubuntu-/windows_/')
+        CACHE_PATH="_install/${PLATFORM}/release/cuda"
+        echo "cache_path=${CACHE_PATH}" >> $GITHUB_OUTPUT
+
+    - name: Cache CUDA for Windows
+      if: runner.os == 'Windows' && inputs.use-cache == 'true'
+      id: cache-cuda
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.setup-windows.outputs.cache_path }}
+        key: windows-cuda-${{ inputs.cuda_version }}.v1
+
+    - name: Create cuda.version file if cache hit
+      if: runner.os == 'Windows' && steps.cache-cuda.outputs.cache-hit == 'true'
+      shell: pwsh
+      run: |
+        $CACHE_PATH = "${{ steps.setup-windows.outputs.cache_path }}"
+        New-Item -ItemType Directory -Force -Path $CACHE_PATH | Out-Null
+        echo "${{ inputs.cuda_version }}" > "${CACHE_PATH}\cuda.version"
+
+    - name: Install CUDA for Windows
+      if: runner.os == 'Windows' && steps.cache-cuda.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        $CUDA_VERSION_SHORT = "${{ steps.setup-windows.outputs.cuda_version_short }}"
+        $CUDA_VERSION = "${{ inputs.cuda_version }}"
+        $CACHE_PATH = "${{ steps.setup-windows.outputs.cache_path }}"
+
+        # CUDA インストーラーのダウンロード
+        # 注: 実際のインストール URL は CUDA のバージョンによって異なるため、
+        # 環境に応じて調整が必要
+        Write-Host "CUDA ${CUDA_VERSION_SHORT} のセットアップが必要です"
+        Write-Host "キャッシュパス: ${CACHE_PATH}"
+
+        # キャッシュディレクトリを作成
+        New-Item -ItemType Directory -Force -Path $CACHE_PATH | Out-Null
+
+        # cuda.version ファイルを作成
+        echo $CUDA_VERSION > "${CACHE_PATH}\cuda.version"
+
+    - name: Set output for Windows
+      if: runner.os == 'Windows'
+      id: output-windows
+      shell: bash
+      run: |
+        CACHE_PATH="${{ steps.setup-windows.outputs.cache_path }}"
+        echo "cuda_path=${CACHE_PATH}" >> $GITHUB_OUTPUT

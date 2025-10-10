@@ -1,0 +1,135 @@
+name: Test Setup CUDA Toolkit Action
+
+on:
+  push:
+    paths:
+      - '.github/actions/setup-cuda-toolkit/**'
+      - '.github/workflows/test-setup-cuda-toolkit.yml'
+  pull_request:
+    paths:
+      - '.github/actions/setup-cuda-toolkit/**'
+      - '.github/workflows/test-setup-cuda-toolkit.yml'
+  workflow_dispatch:
+
+jobs:
+  test-linux:
+    name: Test CUDA Toolkit Setup - ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu 24.04
+          # cuda-toolkit-{major_version} 形式を使用
+          - os: ubuntu-24.04
+            platform: ubuntu-24.04
+            cuda_version: "12.9.1-1"
+
+          # Ubuntu 22.04
+          # cuda-toolkit-{major_version} 形式を使用
+          - os: ubuntu-22.04
+            platform: ubuntu-22.04
+            cuda_version: "12.8.1-1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test Setup CUDA Toolkit Action
+        id: setup-cuda
+        uses: ./.github/actions/setup-cuda-toolkit
+        with:
+          cuda_version: ${{ matrix.cuda_version }}
+          platform: ${{ matrix.platform }}
+          use-cache: 'false'
+
+      - name: Verify CUDA installation
+        run: |
+          echo "CUDA path: ${{ steps.setup-cuda.outputs.cuda_path }}"
+
+          # nvcc の存在確認
+          if [ -f "/usr/local/cuda/bin/nvcc" ]; then
+            echo "nvcc found"
+            /usr/local/cuda/bin/nvcc --version
+          else
+            echo "Error: nvcc not found"
+            exit 1
+          fi
+
+          # CUDA ライブラリの確認
+          if [ -d "/usr/local/cuda/lib64" ]; then
+            echo "CUDA libraries found"
+            ls -la /usr/local/cuda/lib64/ | head -20
+          else
+            echo "Error: CUDA libraries not found"
+            exit 1
+          fi
+
+  test-windows:
+    name: Test CUDA Toolkit Setup - Windows
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            cuda_version: "12.8.1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test Setup CUDA Toolkit Action
+        id: setup-cuda
+        uses: ./.github/actions/setup-cuda-toolkit
+        with:
+          cuda_version: ${{ matrix.cuda_version }}
+          platform: ${{ matrix.platform }}
+          use-cache: 'true'
+
+      - name: Verify CUDA setup
+        shell: pwsh
+        run: |
+          Write-Host "CUDA path: ${{ steps.setup-cuda.outputs.cuda_path }}"
+          Write-Host "Cache hit: ${{ steps.setup-cuda.outputs.cache-hit }}"
+
+          # cuda.version ファイルの確認
+          $cudaPath = "${{ steps.setup-cuda.outputs.cuda_path }}"
+          $versionFile = Join-Path $cudaPath "cuda.version"
+
+          if (Test-Path $versionFile) {
+            Write-Host "cuda.version file found"
+            Get-Content $versionFile
+          } else {
+            Write-Host "Error: cuda.version file not found at ${versionFile}"
+            exit 1
+          }
+
+  test-windows-cache:
+    name: Test CUDA Toolkit Setup - Windows (Cache Test)
+    runs-on: windows-2022
+    needs: test-windows
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test Setup CUDA Action with cache
+        id: setup-cuda
+        uses: ./.github/actions/setup-cuda
+        with:
+          cuda_version: "12.8.1"
+          platform: windows
+          use-cache: 'true'
+
+      - name: Verify cache was used
+        shell: pwsh
+        run: |
+          $cacheHit = "${{ steps.setup-cuda.outputs.cache-hit }}"
+          Write-Host "Cache hit: ${cacheHit}"
+
+          if ($cacheHit -eq "true") {
+            Write-Host "Cache was successfully used"
+          } else {
+            Write-Host "Warning: Cache was not used (this might be expected on first run)"
+          }

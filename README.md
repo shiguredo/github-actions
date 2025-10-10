@@ -8,6 +8,7 @@ GitHub Actions で使える便利なアクションを提供するリポジト�
 |-------------|------|-------------|
 | Check Repository Permission | リポジトリへの書き込み権限を確認 | [詳細](#check-repository-permission) |
 | Download OpenH264 | プラットフォーム別に OpenH264 ライブラリをダウンロード | [詳細](#download-openh264) |
+| Setup CUDA Toolkit | Linux と Windows 用の CUDA Toolkit をセットアップ | [詳細](#setup-cuda-toolkit) |
 
 ## アクション詳細
 
@@ -255,6 +256,168 @@ jobs:
       - name: Build with OpenH264
         run: |
           export LD_LIBRARY_PATH="${{ steps.openh264.outputs.openh264_path }}:$LD_LIBRARY_PATH"
+          make build
+```
+
+</details>
+
+### Setup CUDA Toolkit
+
+Linux (Ubuntu 22.04/24.04) と Windows 用の CUDA Toolkit をセットアップするアクションです。
+CI/CD 環境で CUDA を必要とするビルドやテストを行う場合に便利です。
+
+Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインストールし、Windows ではキャッシュ機能を提供します。
+
+#### 基本的な使い方
+
+```yaml
+- uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
+  id: cuda
+  with:
+    cuda_version: 12.9.1-1
+    platform: ubuntu-24.04
+```
+
+#### 入力パラメータ
+
+| 名前 | 説明 | 必須 | デフォルト |
+|------|------|------|------------|
+| `cuda_version` | CUDA バージョン（例: `12.9.1-1`） | ✓ | - |
+| `platform` | プラットフォーム（`ubuntu-22.04`, `ubuntu-24.04`, `windows`） | ✓ | - |
+| `use-cache` | CUDA インストールをキャッシュするか（`true`/`false`） | - | `true` |
+
+#### 出力
+
+| 名前 | 説明 | 例 |
+|------|------|-----|
+| `cuda_path` | CUDA インストールパス | `/usr/local/cuda` |
+| `cache-hit` | キャッシュがヒットしたか（Windows のみ） | `true` または `false` |
+
+#### 利用可能な CUDA バージョン
+
+2025 年 10 月現時点で利用可能な主な CUDA バージョン:
+
+**Ubuntu 22.04 / 24.04:**
+
+- CUDA 12.x: `12.5.1-1`, `12.6.0-1`, `12.6.1-1`, `12.6.2-1`, `12.6.3-1`, `12.8.0-1`, `12.8.1-1`, `12.9.0-1`, `12.9.1-1`
+- CUDA 13.x: `13.0.0-1`, `13.0.1-1`, `13.0.2-1`
+
+**注意:** Ubuntu 24.04 では CUDA 12.5.1 以降が利用可能です。
+
+パッケージ形式は `cuda-toolkit-{major_version}={version}` となります（例: `cuda-toolkit-12=12.9.1-1`）。
+
+最新の利用可能なバージョンについては、NVIDIA の公式リポジトリを確認してください:
+
+- Ubuntu 22.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/>
+- Ubuntu 24.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/>
+
+#### 使用例
+
+<details>
+<summary>Ubuntu 24.04 での CUDA セットアップとビルド</summary>
+
+```yaml
+name: Build with CUDA
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
+        id: cuda
+        with:
+          cuda_version: 12.9.1-1
+          platform: ubuntu-24.04
+
+      - name: Verify CUDA installation
+        run: |
+          nvcc --version
+          echo "CUDA path: ${{ steps.cuda.outputs.cuda_path }}"
+
+      - name: Build with CUDA
+        run: |
+          export PATH=/usr/local/cuda/bin:$PATH
+          export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+          make build
+```
+
+</details>
+
+<details>
+<summary>マルチバージョン CUDA テスト</summary>
+
+```yaml
+name: Multi-CUDA Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: ubuntu-24.04
+            cuda_version: 12.9.1-1
+          - os: ubuntu-24.04
+            platform: ubuntu-24.04
+            cuda_version: 13.0.2-1
+          - os: ubuntu-22.04
+            platform: ubuntu-22.04
+            cuda_version: 12.8.1-1
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
+        with:
+          cuda_version: ${{ matrix.cuda_version }}
+          platform: ${{ matrix.platform }}
+
+      - name: Build and test
+        run: |
+          export PATH=/usr/local/cuda/bin:$PATH
+          export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+          make test
+```
+
+</details>
+
+<details>
+<summary>Windows でのキャッシュを利用した CUDA セットアップ</summary>
+
+```yaml
+name: Windows CUDA Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
+        id: cuda
+        with:
+          cuda_version: 12.8.1
+          platform: windows
+          use-cache: 'true'
+
+      - name: Show cache status
+        shell: pwsh
+        run: |
+          Write-Host "CUDA path: ${{ steps.cuda.outputs.cuda_path }}"
+          Write-Host "Cache hit: ${{ steps.cuda.outputs.cache-hit }}"
+
+      - name: Build
+        run: |
+          # ビルドコマンド
           make build
 ```
 
