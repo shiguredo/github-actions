@@ -22,6 +22,18 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # アーキテクチャチェック
+    - name: Check architecture
+      shell: bash
+      run: |
+        ARCH=$(uname -m)
+        if [ "$ARCH" != "x86_64" ]; then
+          echo "Error: This action only supports x86_64 architecture"
+          echo "Current architecture: $ARCH"
+          exit 1
+        fi
+        echo "Architecture check passed: $ARCH"
+
     # Linux 用のステップ
     - name: Download CUDA keyring for Ubuntu 24.04
       if: runner.os == 'Linux' && inputs.platform == 'ubuntu-24.04'
