@@ -285,7 +285,7 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 | 名前 | 説明 | 必須 | デフォルト |
 |------|------|------|------------|
 | `cuda_version` | CUDA バージョン（例: `12.9.1-1`） | ✓ | - |
-| `platform` | プラットフォーム（`ubuntu-22.04`, `ubuntu-24.04`, `windows`） | ✓ | - |
+| `platform` | プラットフォーム（`ubuntu-22.04`, `ubuntu-24.04`, `windows-2022`, `windows-2025`） | ✓ | - |
 | `use-cache` | CUDA インストールをキャッシュするか（`true`/`false`） | - | `true` |
 
 #### 出力
@@ -400,7 +400,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-2022
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
 
@@ -408,7 +408,7 @@ jobs:
         id: cuda
         with:
           cuda_version: 12.8.1
-          platform: windows
+          platform: windows-2025
           use-cache: 'true'
 
       - name: Show cache status
