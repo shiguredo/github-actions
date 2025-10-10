@@ -2,10 +2,10 @@ name: "Setup CUDA Toolkit"
 description: "Setup CUDA Toolkit for Linux and Windows platforms"
 inputs:
   cuda_version:
-    description: "CUDA version (e.g. 12.8.1-1)"
+    description: "CUDA version (e.g. 12.9.1)"
     required: true
   platform:
-    description: "Platform (ubuntu-22.04, ubuntu-24.04, windows)"
+    description: "Platform (ubuntu-22.04, ubuntu-24.04, windows-2022, windows-2025)"
     required: true
   use-cache:
     description: "Whether to use cache for CUDA installation (true/false)"
@@ -52,6 +52,11 @@ runs:
       shell: bash
       run: |
         CUDA_VERSION="${{ inputs.cuda_version }}"
+        # バージョンに -1 が含まれていない場合は自動的に付加
+        # (例: 12.8.1 -> 12.8.1-1)
+        if [[ ! "$CUDA_VERSION" =~ -[0-9]+$ ]]; then
+          CUDA_VERSION="${CUDA_VERSION}-1"
+        fi
         # CUDA_VERSION (例: 12.8.1-1) から cuda-toolkit-12=12.8.1-1 のような形式を生成
         # Ubuntu 22.04 と 24.04 のどちらも cuda-toolkit-{major_version} 形式を使用
         CUDA_MAJOR=$(echo $CUDA_VERSION | cut -d. -f1)
@@ -107,26 +112,96 @@ runs:
       if: runner.os == 'Windows' && steps.cache-cuda.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        $CUDA_VERSION_SHORT = "${{ steps.setup-windows.outputs.cuda_version_short }}"
         $CUDA_VERSION = "${{ inputs.cuda_version }}"
         $CACHE_PATH = "${{ steps.setup-windows.outputs.cache_path }}"
 
-        # CUDA インストーラーのダウンロード
-        # 注: 実際のインストール URL は CUDA のバージョンによって異なるため、
-        # 環境に応じて調整が必要
-        Write-Host "CUDA ${CUDA_VERSION_SHORT} のセットアップが必要です"
+        # cuda_version から -1 などのリビジョン番号を削除 (例: 12.8.1-1 -> 12.8.1)
+        $CUDA_VERSION_CLEAN = $CUDA_VERSION -replace '-.*$', ''
+
+        Write-Host "CUDA ${CUDA_VERSION_CLEAN} のセットアップを開始します"
         Write-Host "キャッシュパス: ${CACHE_PATH}"
+
+        # バージョンマッピングファイルを読み込み
+        $MAPPING_FILE = "${{ github.action_path }}/cuda-versions-windows.json"
+        $versionMap = Get-Content $MAPPING_FILE | ConvertFrom-Json
+
+        # ドライバーバージョンを取得
+        $driverVersion = $versionMap.$CUDA_VERSION_CLEAN
+
+        # URL を構築
+        if ([string]::IsNullOrEmpty($driverVersion)) {
+          # CUDA 13.x 形式 (ドライバーバージョンなし)
+          $installerName = "cuda_${CUDA_VERSION_CLEAN}_windows.exe"
+        } else {
+          # CUDA 12.x 形式 (ドライバーバージョンあり)
+          $installerName = "cuda_${CUDA_VERSION_CLEAN}_${driverVersion}_windows.exe"
+        }
+
+        $installerUrl = "https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION_CLEAN}/local_installers/${installerName}"
+        $installerPath = Join-Path $env:TEMP $installerName
+
+        Write-Host "ダウンロード URL: ${installerUrl}"
+        Write-Host "ダウンロード先: ${installerPath}"
+
+        # CUDA インストーラーをダウンロード
+        try {
+          Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
+          Write-Host "ダウンロード完了"
+        } catch {
+          Write-Error "ダウンロードに失敗しました: $_"
+          exit 1
+        }
 
         # キャッシュディレクトリを作成
         New-Item -ItemType Directory -Force -Path $CACHE_PATH | Out-Null
 
+        # CUDA をサイレントインストール
+        Write-Host "CUDA のインストールを開始します (サイレントモード)"
+        $installArgs = @(
+          "-s",
+          "nvcc_${CUDA_VERSION_CLEAN}",
+          "cudart_${CUDA_VERSION_CLEAN}",
+          "cublas_dev_${CUDA_VERSION_CLEAN}",
+          "curand_dev_${CUDA_VERSION_CLEAN}",
+          "nvrtc_dev_${CUDA_VERSION_CLEAN}",
+          "nvml_dev_${CUDA_VERSION_CLEAN}"
+        )
+
+        try {
+          $process = Start-Process -FilePath $installerPath -ArgumentList $installArgs -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            Write-Error "インストールが失敗しました (終了コード: $($process.ExitCode))"
+            exit 1
+          }
+          Write-Host "インストール完了"
+        } catch {
+          Write-Error "インストール中にエラーが発生しました: $_"
+          exit 1
+        }
+
+        # インストーラーを削除
+        Remove-Item $installerPath -Force
+
         # cuda.version ファイルを作成
         echo $CUDA_VERSION > "${CACHE_PATH}\cuda.version"
+
+        Write-Host "CUDA ${CUDA_VERSION_CLEAN} のセットアップが完了しました"
 
     - name: Set output for Windows
       if: runner.os == 'Windows'
       id: output-windows
-      shell: bash
+      shell: pwsh
       run: |
-        CACHE_PATH="${{ steps.setup-windows.outputs.cache_path }}"
-        echo "cuda_path=${CACHE_PATH}" >> $GITHUB_OUTPUT
+        $CUDA_VERSION = "${{ inputs.cuda_version }}"
+        # cuda_version から -1 などのリビジョン番号を削除 (例: 12.8.1-1 -> 12.8.1)
+        $CUDA_VERSION_CLEAN = $CUDA_VERSION -replace '-.*$', ''
+
+        # CUDA のインストールパス
+        $cudaPath = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${CUDA_VERSION_CLEAN}"
+
+        # bash 形式のパスに変換
+        $cudaPathBash = $cudaPath -replace '\\', '/' -replace 'C:', '/c'
+
+        echo "cuda_path=${cudaPathBash}" >> $env:GITHUB_OUTPUT
+
+        Write-Host "CUDA パス: ${cudaPath}"

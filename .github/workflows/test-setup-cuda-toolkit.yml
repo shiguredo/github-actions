@@ -20,16 +20,14 @@ jobs:
       matrix:
         include:
           # Ubuntu 24.04
-          # cuda-toolkit-{major_version} 形式を使用
           - os: ubuntu-24.04
             platform: ubuntu-24.04
-            cuda_version: "12.9.1-1"
+            cuda_version: "12.9.1"
 
           # Ubuntu 22.04
-          # cuda-toolkit-{major_version} 形式を使用
           - os: ubuntu-22.04
             platform: ubuntu-22.04
-            cuda_version: "12.8.1-1"
+            cuda_version: "12.8.1"
 
     steps:
       - name: Checkout repository
@@ -66,14 +64,18 @@ jobs:
           fi
 
   test-windows:
-    name: Test CUDA Toolkit Setup - Windows
-    runs-on: windows-2022
+    name: Test CUDA Toolkit Setup - ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: windows
+          - os: windows-2022
+            platform: windows-2022
             cuda_version: "12.8.1"
+          - os: windows-2025
+            platform: windows-2025
+            cuda_version: "12.9.1"
 
     steps:
       - name: Checkout repository
@@ -106,9 +108,19 @@ jobs:
           }
 
   test-windows-cache:
-    name: Test CUDA Toolkit Setup - Windows (Cache Test)
-    runs-on: windows-2022
+    name: Test CUDA Toolkit Setup - ${{ matrix.platform }} (Cache Test)
+    runs-on: ${{ matrix.os }}
     needs: test-windows
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows-2022
+            cuda_version: "12.8.1"
+          - os: windows-2025
+            platform: windows-2025
+            cuda_version: "12.9.1"
 
     steps:
       - name: Checkout repository
@@ -118,8 +130,8 @@ jobs:
         id: setup-cuda
         uses: ./.github/actions/setup-cuda-toolkit
         with:
-          cuda_version: "12.8.1"
-          platform: windows
+          cuda_version: ${{ matrix.cuda_version }}
+          platform: ${{ matrix.platform }}
           use-cache: 'true'
 
       - name: Verify cache was used

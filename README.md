@@ -276,7 +276,7 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
   id: cuda
   with:
-    cuda_version: 12.9.1-1
+    cuda_version: 12.9.1
     platform: ubuntu-24.04
 ```
 
@@ -284,7 +284,7 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 
 | 名前 | 説明 | 必須 | デフォルト |
 |------|------|------|------------|
-| `cuda_version` | CUDA バージョン（例: `12.9.1-1`） | ✓ | - |
+| `cuda_version` | CUDA バージョン（例: `12.9.1`） | ✓ | - |
 | `platform` | プラットフォーム（`ubuntu-22.04`, `ubuntu-24.04`, `windows-2022`, `windows-2025`） | ✓ | - |
 | `use-cache` | CUDA インストールをキャッシュするか（`true`/`false`） | - | `true` |
 
@@ -299,19 +299,20 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 
 2025 年 10 月現時点で利用可能な主な CUDA バージョン:
 
-**Ubuntu 22.04 / 24.04:**
+**Ubuntu 22.04 / 24.04 / Windows:**
 
-- CUDA 12.x: `12.5.1-1`, `12.6.0-1`, `12.6.1-1`, `12.6.2-1`, `12.6.3-1`, `12.8.0-1`, `12.8.1-1`, `12.9.0-1`, `12.9.1-1`
-- CUDA 13.x: `13.0.0-1`, `13.0.1-1`, `13.0.2-1`
+- CUDA 12.x: `12.5.1`, `12.6.0`, `12.6.1`, `12.6.2`, `12.6.3`, `12.8.0`, `12.8.1`, `12.9.0`, `12.9.1`
+- CUDA 13.x: `13.0.0`, `13.0.1`, `13.0.2`
 
-**注意:** Ubuntu 24.04 では CUDA 12.5.1 以降が利用可能です。
+**注意:**
+- Ubuntu 24.04 では CUDA 12.5.1 以降が利用可能です
+- Ubuntu ではバージョンに自動的に `-1` が付加されてインストールされます（例: `12.9.1` → `cuda-toolkit-12=12.9.1-1`）
 
-パッケージ形式は `cuda-toolkit-{major_version}={version}` となります（例: `cuda-toolkit-12=12.9.1-1`）。
-
-最新の利用可能なバージョンについては、NVIDIA の公式リポジトリを確認してください:
+最新の利用可能なバージョンについては、NVIDIA の公式サイトを確認してください:
 
 - Ubuntu 22.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/>
 - Ubuntu 24.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/>
+- Windows: <https://developer.download.nvidia.com/compute/cuda/>
 
 #### 使用例
 
@@ -332,7 +333,7 @@ jobs:
       - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
         id: cuda
         with:
-          cuda_version: 12.9.1-1
+          cuda_version: 12.9.1
           platform: ubuntu-24.04
 
       - name: Verify CUDA installation
@@ -364,13 +365,13 @@ jobs:
         include:
           - os: ubuntu-24.04
             platform: ubuntu-24.04
-            cuda_version: 12.9.1-1
+            cuda_version: 12.9.1
           - os: ubuntu-24.04
             platform: ubuntu-24.04
-            cuda_version: 13.0.2-1
+            cuda_version: 13.0.2
           - os: ubuntu-22.04
             platform: ubuntu-22.04
-            cuda_version: 12.8.1-1
+            cuda_version: 12.8.1
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -407,7 +408,7 @@ jobs:
       - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
         id: cuda
         with:
-          cuda_version: 12.8.1
+          cuda_version: 12.9.1
           platform: windows-2025
           use-cache: 'true'
 
@@ -417,8 +418,16 @@ jobs:
           Write-Host "CUDA path: ${{ steps.cuda.outputs.cuda_path }}"
           Write-Host "Cache hit: ${{ steps.cuda.outputs.cache-hit }}"
 
-      - name: Build
+      - name: Verify CUDA installation
+        shell: pwsh
         run: |
+          $env:PATH = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9.1\bin;$env:PATH"
+          nvcc --version
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9.1\bin;$env:PATH"
           # ビルドコマンド
           make build
 ```
