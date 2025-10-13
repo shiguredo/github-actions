@@ -152,35 +152,50 @@ runs:
           exit 1
         }
 
-        # キャッシュディレクトリを作成
-        New-Item -ItemType Directory -Force -Path $CACHE_PATH | Out-Null
+        # 展開用の一時ディレクトリを作成
+        $extractPath = Join-Path $env:TEMP "cuda_extract"
+        New-Item -ItemType Directory -Force -Path $extractPath | Out-Null
 
-        # CUDA をサイレントインストール
-        Write-Host "CUDA のインストールを開始します (サイレントモード)"
-        $installArgs = @(
-          "-s",
-          "nvcc_${CUDA_VERSION_CLEAN}",
-          "cudart_${CUDA_VERSION_CLEAN}",
-          "cublas_dev_${CUDA_VERSION_CLEAN}",
-          "curand_dev_${CUDA_VERSION_CLEAN}",
-          "nvrtc_dev_${CUDA_VERSION_CLEAN}",
-          "nvml_dev_${CUDA_VERSION_CLEAN}"
-        )
-
+        # 7z でインストーラーを展開
+        Write-Host "CUDA インストーラーを展開します"
         try {
-          $process = Start-Process -FilePath $installerPath -ArgumentList $installArgs -Wait -PassThru
-          if ($process.ExitCode -ne 0) {
-            Write-Error "インストールが失敗しました (終了コード: $($process.ExitCode))"
-            exit 1
-          }
-          Write-Host "インストール完了"
+          & 7z x $installerPath -o"$extractPath" | Out-Null
+          Write-Host "展開完了"
         } catch {
-          Write-Error "インストール中にエラーが発生しました: $_"
+          Write-Error "展開中にエラーが発生しました: $_"
           exit 1
         }
 
         # インストーラーを削除
         Remove-Item $installerPath -Force
+
+        # キャッシュディレクトリを作成
+        New-Item -ItemType Directory -Force -Path $CACHE_PATH | Out-Null
+
+        # 必要なコンポーネントをコピー
+        Write-Host "必要なコンポーネントをコピーします"
+        $components = @(
+          @{Name = "cuda_nvcc"; SubDir = "nvcc"},
+          @{Name = "cuda_cudart"; SubDir = "cudart"},
+          @{Name = "cuda_cublas_dev"; SubDir = "cublas_dev"},
+          @{Name = "cuda_curand_dev"; SubDir = "curand_dev"},
+          @{Name = "cuda_nvrtc_dev"; SubDir = "nvrtc_dev"},
+          @{Name = "cuda_nvml_dev"; SubDir = "nvml_dev"}
+        )
+
+        foreach ($component in $components) {
+          $componentPath = Join-Path $extractPath $component.Name
+          $subDirPath = Join-Path $componentPath $component.SubDir
+          if (Test-Path $subDirPath) {
+            Write-Host "コピー中: $($component.Name)"
+            Copy-Item -Path "$subDirPath\*" -Destination $CACHE_PATH -Recurse -Force
+          } else {
+            Write-Warning "コンポーネント $($component.Name) が見つかりませんでした: $subDirPath"
+          }
+        }
+
+        # 展開ディレクトリを削除
+        Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
 
         # cuda.version ファイルを作成
         echo $CUDA_VERSION > "${CACHE_PATH}\cuda.version"
