@@ -1,9 +1,6 @@
 name: "Download OpenH264"
 description: "Download OpenH264 library for the platform"
 inputs:
-  os:
-    description: "OS name (e.g. ubuntu-24.04, ubuntu-24.04-arm, macos-26, windows-2025)"
-    required: true
   openh264_version:
     description: "OpenH264 version (e.g. 2.6.0)"
     required: true
@@ -27,22 +24,22 @@ runs:
       shell: bash
       run: |
         # キャッシュディレクトリを設定
-        CACHE_DIR="${HOME}/.openh264-cache/${{ inputs.os }}-${{ inputs.openh264_version }}"
+        CACHE_DIR="${HOME}/.openh264-cache/${{ runner.os }}-${{ runner.arch }}-${{ inputs.openh264_version }}"
         echo "cache_dir=${CACHE_DIR}" >> $GITHUB_OUTPUT
 
         # ライブラリファイル名を決定
-        case "${{ inputs.os }}" in
-          ubuntu-*)
+        case "${{ runner.os }}" in
+          Linux)
             LIB_NAME="libopenh264.so"
             ;;
-          macos-*)
+          macOS)
             LIB_NAME="libopenh264.dylib"
             ;;
-          windows-*)
+          Windows)
             LIB_NAME="libopenh264.dll"
             ;;
           *)
-            echo "Unknown OS: ${{ inputs.os }}"
+            echo "Unknown OS: ${{ runner.os }}"
             exit 1
             ;;
         esac
@@ -55,7 +52,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ steps.setup.outputs.cache_dir }}
-        key: openh264-${{ inputs.os }}-${{ inputs.openh264_version }}
+        key: openh264-${{ runner.os }}-${{ runner.arch }}-${{ inputs.openh264_version }}
 
     - name: Download and setup OpenH264 (Linux/macOS)
       if: steps.cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
@@ -82,30 +79,26 @@ runs:
         fi
 
         # プラットフォームごとの設定と URL 取得
-        case "${{ inputs.os }}" in
-          ubuntu-*-arm)
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          if [[ "${{ runner.arch }}" == "ARM64" ]]; then
             URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
             MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
-            TARGET="${LIB_NAME}"
-            ;;
-          ubuntu-*)
+          else
             URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
             MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
-            TARGET="${LIB_NAME}"
-            ;;
-          macos-*)
-            URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
-            TARGET="${LIB_NAME}"
-            ;;
-          *)
-            echo "Unknown OS: ${{ inputs.os }}"
-            exit 1
-            ;;
-        esac
+          fi
+          TARGET="${LIB_NAME}"
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
+          MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
+          TARGET="${LIB_NAME}"
+        else
+          echo "Unknown OS: ${{ runner.os }}"
+          exit 1
+        fi
 
         if [[ -z "$URL" ]]; then
-          echo "Error: Could not find URL for OS ${{ inputs.os }} in release"
+          echo "Error: Could not find URL for OS ${{ runner.os }} (${{ runner.arch }}) in release"
           exit 1
         fi
 

@@ -77,7 +77,6 @@ jobs:
         id: download
         uses: ./.github/actions/download-openh264
         with:
-          os: ${{ matrix.os }}
           openh264_version: ${{ matrix.openh264_version }}
           use-cache: "false"
 
