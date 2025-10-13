@@ -3,85 +3,84 @@ name: Test Download OpenH264 Action
 on:
   push:
     paths:
-      - '.github/actions/download-openh264/**'
-      - '.github/workflows/test-download-openh264.yml'
+      - ".github/actions/download-openh264/**"
+      - ".github/workflows/test-download-openh264.yml"
   pull_request:
     paths:
-      - '.github/actions/download-openh264/**'
-      - '.github/workflows/test-download-openh264.yml'
+      - ".github/actions/download-openh264/**"
+      - ".github/workflows/test-download-openh264.yml"
   workflow_dispatch:
 
 jobs:
   test:
-    name: Test - ${{ matrix.platform }} - OpenH264 ${{ matrix.openh264_version }}
-    runs-on: ${{ matrix.os }}
+    name: Test - ${{ matrix.os }} - OpenH264 ${{ matrix.openh264_version }}
     strategy:
       fail-fast: false
       matrix:
         include:
           # Ubuntu 24.04 x86_64
           - os: ubuntu-24.04
-            platform: ubuntu-24.04_x86_64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.so
-          
+
           # Ubuntu 22.04 x86_64
           - os: ubuntu-22.04
-            platform: ubuntu-22.04_x86_64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.so
-          
-          # Ubuntu ARM64 (self-hosted runner が必要な場合はコメントアウト)
-          # - os: ubuntu-latest
-          #   platform: ubuntu-24.04_armv8
-          #   openh264_version: "2.6.0"
-          #   expected_lib: libopenh264.so
-          
-          # macOS ARM64
-          # macos だけの場合は最新の 15 を使う
-          - os: macos-15
-            platform: macos_arm64
+
+          # Ubuntu ARM64
+          - os: ubuntu-24.04-arm
+            openh264_version: "2.6.0"
+            expected_lib: libopenh264.so
+
+          # Ubuntu ARM64
+          - os: ubuntu-22.04-arm
+            openh264_version: "2.6.0"
+            expected_lib: libopenh264.so
+
+          # macOS 26 ARM64
+          - os: macos-26
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dylib
-          
-          # macosOS 15 ARM64
+
+          # macOS 15 ARM64
           - os: macos-15
-            platform: macos-15_arm64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dylib
-          
-          # Windows x86_64
-          # windows だけの場合は最新の 2025 を使う
+
+          # macOS 14 ARM64
+          - os: macos-14
+            openh264_version: "2.6.0"
+            expected_lib: libopenh264.dylib
+
+          # Windows 2025 x86_64
           - os: windows-2025
-            platform: windows_x86_64
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dll
 
-          
-          # Windows 2025 x86_64
-          - os: windows-2025
-            platform: windows-2025_x86_64
+          # Windows 2022 x86_64
+          - os: windows-2022
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dll
-          
+
           # 異なるバージョンのテスト
           - os: ubuntu-24.04
-            platform: ubuntu-24.04_x86_64
             openh264_version: "2.5.0"
             expected_lib: libopenh264.so
-    
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Test Download OpenH264 Action
         id: download
         uses: ./.github/actions/download-openh264
         with:
-          platform_name: ${{ matrix.platform }}
+          os: ${{ matrix.os }}
           openh264_version: ${{ matrix.openh264_version }}
-          use-cache: 'false'
-      
+          use-cache: "false"
+
       - name: Verify library exists (Ubuntu/macOS)
         if: runner.os != 'Windows'
         run: |
@@ -91,18 +90,18 @@ jobs:
             exit 1
           fi
           echo "Library found in working directory"
-          
+
           echo "Checking output path: ${{ steps.download.outputs.openh264_path }}"
           if [ ! -f "${{ steps.download.outputs.openh264_path }}" ]; then
             echo "Error: Library file not found at output path"
             exit 1
           fi
           echo "Library found at output path"
-          
+
           # ファイル情報を表示
           ls -la "${{ matrix.expected_lib }}"
           file "${{ matrix.expected_lib }}"
-      
+
       - name: Verify library exists (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -113,13 +112,13 @@ jobs:
             exit 1
           }
           Write-Host "Library found in working directory"
-          
+
           Write-Host "Checking output path: ${{ steps.download.outputs.openh264_path }}"
           if (-not (Test-Path "${{ steps.download.outputs.openh264_path }}")) {
             Write-Host "Error: Library file not found at output path"
             exit 1
           }
           Write-Host "Library found at output path"
-          
+
           # ファイル情報を表示
           Get-Item "${{ matrix.expected_lib }}" | Format-List

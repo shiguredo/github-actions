@@ -1,8 +1,8 @@
 name: "Download OpenH264"
 description: "Download OpenH264 library for the platform"
 inputs:
-  platform_name:
-    description: "Platform name (e.g. ubuntu-24.04_x86_64, macos_arm64, windows_x86_64)"
+  os:
+    description: "OS name (e.g. ubuntu-24.04, ubuntu-24.04-arm, macos-26, windows-2025)"
     required: true
   openh264_version:
     description: "OpenH264 version (e.g. 2.6.0)"
@@ -27,22 +27,22 @@ runs:
       shell: bash
       run: |
         # キャッシュディレクトリを設定
-        CACHE_DIR="${HOME}/.openh264-cache/${{ inputs.platform_name }}-${{ inputs.openh264_version }}"
+        CACHE_DIR="${HOME}/.openh264-cache/${{ inputs.os }}-${{ inputs.openh264_version }}"
         echo "cache_dir=${CACHE_DIR}" >> $GITHUB_OUTPUT
 
         # ライブラリファイル名を決定
-        case "${{ inputs.platform_name }}" in
-          ubuntu-*_x86_64|ubuntu-*_armv8)
+        case "${{ inputs.os }}" in
+          ubuntu-*)
             LIB_NAME="libopenh264.so"
             ;;
-          macos_arm64 | macos-*_arm64)
+          macos-*)
             LIB_NAME="libopenh264.dylib"
             ;;
-          windows_x86_64 | windows-*_x86_64)
+          windows-*)
             LIB_NAME="libopenh264.dll"
             ;;
           *)
-            echo "Unknown platform: ${{ inputs.platform_name }}"
+            echo "Unknown OS: ${{ inputs.os }}"
             exit 1
             ;;
         esac
@@ -55,7 +55,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ steps.setup.outputs.cache_dir }}
-        key: openh264-${{ inputs.platform_name }}-${{ inputs.openh264_version }}
+        key: openh264-${{ inputs.os }}-${{ inputs.openh264_version }}
 
     - name: Download and setup OpenH264 (Linux/macOS)
       if: steps.cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
@@ -82,35 +82,30 @@ runs:
         fi
 
         # プラットフォームごとの設定と URL 取得
-        case "${{ inputs.platform_name }}" in
-          ubuntu-*_x86_64)
-            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
-            TARGET="${LIB_NAME}"
-            ;;
-          ubuntu-*_armv8)
+        case "${{ inputs.os }}" in
+          ubuntu-*-arm)
             URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
             MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
-          macos-*_arm64)
-            URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
+          ubuntu-*)
+            URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
+            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
-          macos_arm64)
+          macos-*)
             URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
             MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
             TARGET="${LIB_NAME}"
             ;;
           *)
-            echo "Unknown platform: ${{ inputs.platform_name }}"
+            echo "Unknown OS: ${{ inputs.os }}"
             exit 1
             ;;
         esac
 
         if [[ -z "$URL" ]]; then
-          echo "Error: Could not find URL for platform ${{ inputs.platform_name }} in release"
+          echo "Error: Could not find URL for OS ${{ inputs.os }} in release"
           exit 1
         fi
 

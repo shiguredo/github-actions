@@ -129,7 +129,7 @@ jobs:
 - uses: shiguredo/github-actions/.github/actions/download-openh264@main
   id: openh264
   with:
-    platform_name: ubuntu-24.04_x86_64
+    os: ubuntu-24.04
     openh264_version: 2.6.0
 ```
 
@@ -137,8 +137,8 @@ jobs:
 
 | 名前 | 説明 | 必須 | デフォルト |
 |------|------|------|------------|
-| `platform_name` | プラットフォーム名（例: `ubuntu-24.04_x86_64`, `macos_arm64`, `windows_x86_64`） | ✓ | - |
-| `openh264_version` | OpenH264のバージョン（例: `2.6.0`） | ✓ | - |
+| `os` | OS 名（例: `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-26`, `windows-2025`） | ✓ | - |
+| `openh264_version` | OpenH264 のバージョン（例: `2.6.0`） | ✓ | - |
 | `use-cache` | ダウンロードしたライブラリをキャッシュするか（`true`/`false`） | - | `false` |
 
 #### 出力
@@ -152,10 +152,15 @@ jobs:
 
 | プラットフォーム | 値 | ライブラリファイル |
 |-----------------|-----|-------------------|
-| Ubuntu (x86_64) | `ubuntu-*_x86_64` | `libopenh264.so` |
-| Ubuntu (ARM64) | `ubuntu-*_armv8` | `libopenh264.so` |
-| macOS (ARM64) | `macos_arm64` or `macos-*_arm64` | `libopenh264.dylib` |
-| Windows (x86_64) | `windows_x86_64` or `windows-*_x86_64` | `libopenh264.dll` |
+| Ubuntu 24.04 (x86_64) | `ubuntu-24.04` | `libopenh264.so` |
+| Ubuntu 22.04 (x86_64) | `ubuntu-22.04` | `libopenh264.so` |
+| Ubuntu 24.04 (ARM64) | `ubuntu-24.04-arm` | `libopenh264.so` |
+| Ubuntu 22.04 (ARM64) | `ubuntu-22.04-arm` | `libopenh264.so` |
+| macOS 26 (ARM64) | `macos-26` | `libopenh264.dylib` |
+| macOS 15 (ARM64) | `macos-15` | `libopenh264.dylib` |
+| macOS 14 (ARM64) | `macos-14` | `libopenh264.dylib` |
+| Windows 2025 (x86_64) | `windows-2025` | `libopenh264.dll` |
+| Windows 2022 (x86_64) | `windows-2022` | `libopenh264.dll` |
 
 #### 使用例
 
@@ -176,9 +181,9 @@ jobs:
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
         with:
-          platform_name: ubuntu-24.04_x86_64
+          os: ubuntu-24.04
           openh264_version: 2.6.0
-      
+
       - name: Build with OpenH264
         run: |
           export LD_LIBRARY_PATH="${{ steps.openh264.outputs.openh264_path }}:$LD_LIBRARY_PATH"
@@ -199,24 +204,21 @@ jobs:
   build:
     strategy:
       matrix:
-        include:
-          - os: ubuntu-24.04
-            platform: ubuntu-24.04_x86_64
-          - os: macos-latest
-            platform: macos_arm64
-          - os: windows-latest
-            platform: windows_x86_64
-    
+        os:
+          - ubuntu-24.04
+          - macos-15
+          - windows-2025
+
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
         with:
-          platform_name: ${{ matrix.platform }}
+          os: ${{ matrix.os }}
           openh264_version: 2.6.0
-      
+
       - name: Use OpenH264
         run: |
           echo "OpenH264 library is at: ${{ steps.openh264.outputs.openh264_path }}"
@@ -241,10 +243,10 @@ jobs:
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
         with:
-          platform_name: ubuntu-24.04_x86_64
+          os: ubuntu-24.04
           openh264_version: 2.6.0
           use-cache: 'true'
-      
+
       - name: Show cache status
         run: |
           if [[ "${{ steps.openh264.outputs.cache-hit }}" == "true" ]]; then
