@@ -207,16 +207,11 @@ runs:
       id: output-windows
       shell: pwsh
       run: |
-        $CUDA_VERSION = "${{ inputs.cuda_version }}"
-        # cuda_version から -1 などのリビジョン番号を削除 (例: 12.8.1-1 -> 12.8.1)
-        $CUDA_VERSION_CLEAN = $CUDA_VERSION -replace '-.*$', ''
+        $CACHE_PATH = "${{ steps.setup-windows.outputs.cache_path }}"
 
-        # CUDA のインストールパス
-        $cudaPath = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${CUDA_VERSION_CLEAN}"
-
-        # bash 形式のパスに変換
-        $cudaPathBash = $cudaPath -replace '\\', '/' -replace 'C:', '/c'
+        # Windows パスを bash 形式に変換 (例: _install\windows-2022\release\cuda -> _install/windows-2022/release/cuda)
+        $cudaPathBash = $CACHE_PATH -replace '\\', '/'
 
         echo "cuda_path=${cudaPathBash}" >> $env:GITHUB_OUTPUT
 
-        Write-Host "CUDA パス: ${cudaPath}"
+        Write-Host "CUDA パス: ${CACHE_PATH}"
