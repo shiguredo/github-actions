@@ -1,0 +1,14 @@
+{
+  "opus": {
+    "trigger": "!opus",
+    "model": "claude-opus-4-1-20250805"
+  },
+  "sonnet": {
+    "trigger": "!sonnet",
+    "model": "claude-sonnet-4-5-20250929"
+  },
+  "haiku": {
+    "trigger": "!haiku",
+    "model": "claude-haiku-4-5-20251001"
+  }
+}

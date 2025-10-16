@@ -1,0 +1,117 @@
+name: 'Claude Code Action'
+description: 'Run Claude Code with automatic model selection based on comment trigger'
+inputs:
+  api_key:
+    description: 'Anthropic API key (required, for users with write permission, sonnet/haiku only)'
+    required: true
+  oauth_user:
+    description: 'OAuth user (optional, enables all models including opus)'
+    required: false
+    default: ''
+  oauth_token:
+    description: 'OAuth token for the oauth_user (optional)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    # リポジトリへの write 権限をチェック
+    - id: check-permission
+      uses: shiguredo/github-actions/.github/actions/check-write-permission@main
+      with:
+        username: ${{ github.event.comment.user.login }}
+
+    # コメント内にトリガーフレーズ (!opus, !sonnet, !haiku) が含まれているかチェック
+    - id: check-trigger
+      if: steps.check-permission.outputs.has-permission == 'true'
+      shell: bash
+      run: |
+        COMMENT_BODY="${{ github.event.comment.body }}"
+        if echo "${COMMENT_BODY}" | grep -qE '!(opus|sonnet|haiku)'; then
+          echo "has_trigger=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_trigger=false" >> $GITHUB_OUTPUT
+          echo "No valid trigger phrase found (!opus, !sonnet, !haiku)"
+        fi
+
+    # コメント投稿者が OAuth ユーザーかどうかを判定
+    - id: check-oauth-user
+      if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true'
+      shell: bash
+      run: |
+        COMMENT_USER="${{ github.event.comment.user.login }}"
+        OAUTH_USER="${{ inputs.oauth_user }}"
+
+        if [[ -n "${OAUTH_USER}" ]] && [[ "${COMMENT_USER}" == "${OAUTH_USER}" ]]; then
+          echo "is_oauth_user=true" >> $GITHUB_OUTPUT
+        else
+          echo "is_oauth_user=false" >> $GITHUB_OUTPUT
+        fi
+
+    # コメント内容から使用するモデルを決定 (models.json から取得)
+    - id: determine-model
+      if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true'
+      shell: bash
+      run: |
+        COMMENT_BODY="${{ github.event.comment.body }}"
+        MODELS_JSON="${{ github.action_path }}/models.json"
+
+        if echo "${COMMENT_BODY}" | grep -q '!opus'; then
+          TRIGGER=$(jq -r '.opus.trigger' "${MODELS_JSON}")
+          MODEL=$(jq -r '.opus.model' "${MODELS_JSON}")
+        elif echo "${COMMENT_BODY}" | grep -q '!sonnet'; then
+          TRIGGER=$(jq -r '.sonnet.trigger' "${MODELS_JSON}")
+          MODEL=$(jq -r '.sonnet.model' "${MODELS_JSON}")
+        elif echo "${COMMENT_BODY}" | grep -q '!haiku'; then
+          TRIGGER=$(jq -r '.haiku.trigger' "${MODELS_JSON}")
+          MODEL=$(jq -r '.haiku.model' "${MODELS_JSON}")
+        fi
+
+        echo "trigger=${TRIGGER}" >> $GITHUB_OUTPUT
+        echo "model=${MODEL}" >> $GITHUB_OUTPUT
+
+    # opus は OAuth ユーザーのみ使用可能
+    - id: check-opus-permission
+      if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true' && contains(github.event.comment.body, '!opus')
+      shell: bash
+      run: |
+        IS_OAUTH_USER="${{ steps.check-oauth-user.outputs.is_oauth_user }}"
+        if [[ "${IS_OAUTH_USER}" != "true" ]]; then
+          echo "can_use_opus=false" >> $GITHUB_OUTPUT
+          echo "Error: opus is only available for OAuth user"
+        else
+          echo "can_use_opus=true" >> $GITHUB_OUTPUT
+        fi
+
+    # 認証タイプを決定 (OAuth ユーザーなら oauth、それ以外は api)
+    - id: determine-auth-type
+      if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true' && (steps.check-opus-permission.outputs.can_use_opus != 'false' || !contains(github.event.comment.body, '!opus'))
+      shell: bash
+      run: |
+        IS_OAUTH_USER="${{ steps.check-oauth-user.outputs.is_oauth_user }}"
+        if [[ "${IS_OAUTH_USER}" == "true" ]]; then
+          echo "auth_type=oauth" >> $GITHUB_OUTPUT
+        else
+          echo "auth_type=api" >> $GITHUB_OUTPUT
+        fi
+
+    # OAuth トークンで Claude Code を実行
+    - uses: anthropics/claude-code-action@v1
+      if: steps.determine-auth-type.outputs.auth_type == 'oauth'
+      with:
+        claude_code_oauth_token: ${{ inputs.oauth_token }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        trigger_phrase: ${{ steps.determine-model.outputs.trigger }}
+        claude_args: |
+          --model ${{ steps.determine-model.outputs.model }}
+
+    # API キーで Claude Code を実行
+    - uses: anthropics/claude-code-action@v1
+      if: steps.determine-auth-type.outputs.auth_type == 'api'
+      with:
+        anthropic_api_key: ${{ inputs.api_key }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        trigger_phrase: ${{ steps.determine-model.outputs.trigger }}
+        claude_args: |
+          --model ${{ steps.determine-model.outputs.model }}
