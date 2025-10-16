@@ -101,7 +101,7 @@ runs:
       if: steps.determine-auth-type.outputs.auth_type == 'oauth'
       with:
         claude_code_oauth_token: ${{ inputs.oauth_token }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
         trigger_phrase: ${{ steps.determine-model.outputs.trigger }}
         claude_args: |
           --model ${{ steps.determine-model.outputs.model }}
@@ -111,7 +111,7 @@ runs:
       if: steps.determine-auth-type.outputs.auth_type == 'api'
       with:
         anthropic_api_key: ${{ inputs.api_key }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
         trigger_phrase: ${{ steps.determine-model.outputs.trigger }}
         claude_args: |
           --model ${{ steps.determine-model.outputs.model }}
