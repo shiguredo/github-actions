@@ -27,7 +27,7 @@ runs:
       if: steps.check-permission.outputs.has-permission == 'true'
       shell: bash
       run: |
-        COMMENT_BODY="${{ github.event.comment.body }}"
+        COMMENT_BODY='${{ github.event.comment.body }}'
         if echo "${COMMENT_BODY}" | grep -qE '!(opus|sonnet|haiku)'; then
           echo "has_trigger=true" >> $GITHUB_OUTPUT
         else
@@ -54,7 +54,7 @@ runs:
       if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true'
       shell: bash
       run: |
-        COMMENT_BODY="${{ github.event.comment.body }}"
+        COMMENT_BODY='${{ github.event.comment.body }}'
         MODELS_JSON="${{ github.action_path }}/models.json"
 
         if echo "${COMMENT_BODY}" | grep -q '!opus'; then
