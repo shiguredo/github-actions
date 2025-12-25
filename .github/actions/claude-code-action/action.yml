@@ -12,6 +12,10 @@ inputs:
     description: 'OAuth token for the oauth_user (optional)'
     required: false
     default: ''
+  api_allowed_models:
+    description: 'Allowed models for API key authentication (comma-separated, e.g., haiku,sonnet,opus)'
+    required: false
+    default: 'haiku,sonnet'
 
 runs:
   using: 'composite'
@@ -71,22 +75,9 @@ runs:
         echo "trigger=${TRIGGER}" >> $GITHUB_OUTPUT
         echo "model=${MODEL}" >> $GITHUB_OUTPUT
 
-    # opus は OAuth ユーザーのみ使用可能
-    - id: check-opus-permission
-      if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true' && contains(github.event.comment.body, '!opus')
-      shell: bash
-      run: |
-        IS_OAUTH_USER="${{ steps.check-oauth-user.outputs.is_oauth_user }}"
-        if [[ "${IS_OAUTH_USER}" != "true" ]]; then
-          echo "can_use_opus=false" >> $GITHUB_OUTPUT
-          echo "Error: opus is only available for OAuth user"
-        else
-          echo "can_use_opus=true" >> $GITHUB_OUTPUT
-        fi
-
     # 認証タイプを決定 (OAuth ユーザーなら oauth、それ以外は api)
     - id: determine-auth-type
-      if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true' && (steps.check-opus-permission.outputs.can_use_opus != 'false' || !contains(github.event.comment.body, '!opus'))
+      if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true'
       shell: bash
       run: |
         IS_OAUTH_USER="${{ steps.check-oauth-user.outputs.is_oauth_user }}"
@@ -94,6 +85,25 @@ runs:
           echo "auth_type=oauth" >> $GITHUB_OUTPUT
         else
           echo "auth_type=api" >> $GITHUB_OUTPUT
+        fi
+
+    # API 認証時のモデル許可チェック
+    - id: check-api-model-permission
+      if: steps.determine-auth-type.outputs.auth_type == 'api'
+      shell: bash
+      run: |
+        TRIGGER="${{ steps.determine-model.outputs.trigger }}"
+        ALLOWED_MODELS="${{ inputs.api_allowed_models }}"
+
+        # トリガーからモデル名を抽出 (!opus -> opus)
+        MODEL_NAME="${TRIGGER#!}"
+
+        # allowed_models に含まれているかチェック
+        if echo ",${ALLOWED_MODELS}," | grep -q ",${MODEL_NAME},"; then
+          echo "model_allowed=true" >> $GITHUB_OUTPUT
+        else
+          echo "model_allowed=false" >> $GITHUB_OUTPUT
+          echo "Error: ${MODEL_NAME} is not allowed. Allowed models: ${ALLOWED_MODELS}"
         fi
 
     # OAuth トークンで Claude Code を実行
@@ -108,7 +118,7 @@ runs:
 
     # API キーで Claude Code を実行
     - uses: anthropics/claude-code-action@v1
-      if: steps.determine-auth-type.outputs.auth_type == 'api'
+      if: steps.determine-auth-type.outputs.auth_type == 'api' && steps.check-api-model-permission.outputs.model_allowed == 'true'
       with:
         anthropic_api_key: ${{ inputs.api_key }}
         github_token: ${{ github.token }}
