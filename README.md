@@ -304,7 +304,7 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 **Ubuntu 22.04 / 24.04 / Windows:**
 
 - CUDA 12.x: `12.5.1`, `12.6.0`, `12.6.1`, `12.6.2`, `12.6.3`, `12.8.0`, `12.8.1`, `12.9.0`, `12.9.1`
-- CUDA 13.x: `13.0.0`, `13.0.1`, `13.0.2`
+- CUDA 13.x: `13.0.0`, `13.0.1`, `13.0.2`, `13.1.0`, `13.1.1`
 
 **注意:**
 
@@ -315,7 +315,7 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 
 - Ubuntu 22.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/>
 - Ubuntu 24.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/>
-- Windows: <https://developer.download.nvidia.com/compute/cuda/>
+- Windows: <https://developer.download.nvidia.com/compute/cuda/repos/windows/x86_64/>
 
 #### 使用例
 
