@@ -313,9 +313,9 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 
 最新の利用可能なバージョンについては、NVIDIA の公式サイトを確認してください:
 
-- Ubuntu 22.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/>
-- Ubuntu 24.04: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/>
-- Windows: <https://developer.download.nvidia.com/compute/cuda/repos/windows/x86_64/>
+- Ubuntu 22.04 x86_64: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/>
+- Ubuntu 24.04 x86_64: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/>
+- Windows x86_64: <https://developer.download.nvidia.com/compute/cuda/repos/windows/x86_64/>
 
 #### 使用例
 
