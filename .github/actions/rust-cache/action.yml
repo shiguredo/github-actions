@@ -1,0 +1,42 @@
+name: "Rust Cache"
+description: "Cache Rust dependencies and build artifacts"
+inputs:
+  toolchain:
+    description: "Rust toolchain (stable, beta, nightly)"
+    required: false
+    default: "stable"
+  prefix-key:
+    description: "Cache key prefix"
+    required: false
+    default: "v0"
+outputs:
+  cache-hit:
+    description: "Whether the cache was hit"
+    value: ${{ steps.cache-rust.outputs.cache-hit }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache Rust dependencies
+      id: cache-rust
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/
+          ~/.cargo/git/
+          target/
+          **/build.rs
+          **/Cargo.toml
+        key: ${{ inputs.prefix-key }}-rust-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-${{ github.job }}-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ inputs.prefix-key }}-rust-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-${{ github.job }}-
+          ${{ inputs.prefix-key }}-rust-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-
+
+    - name: Show cache status
+      shell: bash
+      run: |
+        if [ "${{ steps.cache-rust.outputs.cache-hit }}" == "true" ]; then
+          echo "Cache hit: Rust dependencies restored from cache"
+        else
+          echo "Cache miss: Rust dependencies will be built and cached"
+        fi
