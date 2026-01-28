@@ -9,6 +9,7 @@ GitHub Actions で使える便利なアクションを提供するリポジト�
 | Check Repository Permission | リポジトリへの書き込み権限を確認 | [詳細](#check-repository-permission) |
 | Download OpenH264 | プラットフォーム別に OpenH264 ライブラリをダウンロード | [詳細](#download-openh264) |
 | Setup CUDA Toolkit | Linux と Windows 用の CUDA Toolkit をセットアップ | [詳細](#setup-cuda-toolkit) |
+| Rust Cache | Rust プロジェクトの依存関係とビルド成果物をキャッシュ | [詳細](#rust-cache) |
 | Claude Code Action | GitHub コメントから Claude Code を自動実行 | [詳細](#claude-code-action) |
 
 ## アクション詳細
@@ -433,6 +434,109 @@ jobs:
           $env:PATH = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9.1\bin;$env:PATH"
           # ビルドコマンド
           make build
+```
+
+</details>
+
+### Rust Cache
+
+Rust プロジェクトの依存関係とビルド成果物をキャッシュするアクションです。
+`~/.cargo/registry/`、`~/.cargo/git/`、`target/` ディレクトリをキャッシュし、ビルド時間を短縮します。
+
+また、`build.rs` と `Cargo.toml` のタイムスタンプを保持することで、不要な再ビルドを防ぎます。
+
+#### 基本的な使い方
+
+```yaml
+- uses: shiguredo/github-actions/.github/actions/rust-cache@main
+```
+
+#### 入力パラメータ
+
+| 名前 | 説明 | 必須 | デフォルト |
+|------|------|------|------------|
+| `toolchain` | Rust toolchain（`stable`, `beta`, `nightly`） | - | `stable` |
+| `prefix-key` | キャッシュキーの接頭辞 | - | `v0` |
+
+#### 出力
+
+| 名前 | 説明 | 値 |
+|------|------|-----|
+| `cache-hit` | キャッシュがヒットしたか | `true` または `false` |
+
+#### キャッシュ対象
+
+| パス | 説明 |
+|------|------|
+| `~/.cargo/registry/` | crates.io からダウンロードしたクレート |
+| `~/.cargo/git/` | git リポジトリから取得した依存関係 |
+| `target/` | ビルド成果物 |
+| `**/build.rs` | ビルドスクリプト（タイムスタンプ保持） |
+| `**/Cargo.toml` | マニフェストファイル（タイムスタンプ保持） |
+
+#### 使用例
+
+<details>
+<summary>基本的な Rust プロジェクトのビルド</summary>
+
+```yaml
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shiguredo/github-actions/.github/actions/rust-cache@main
+
+      - name: Build
+        run: cargo build --release
+```
+
+</details>
+
+<details>
+<summary>マルチ toolchain テスト</summary>
+
+```yaml
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        run: rustup default ${{ matrix.toolchain }}
+
+      - uses: shiguredo/github-actions/.github/actions/rust-cache@main
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Test
+        run: cargo test
+```
+
+</details>
+
+<details>
+<summary>キャッシュの強制リセット</summary>
+
+```yaml
+# キャッシュに問題がある場合、prefix-key を変更して新しいキャッシュを作成
+- uses: shiguredo/github-actions/.github/actions/rust-cache@main
+  with:
+    prefix-key: v1  # v0 から v1 に変更
 ```
 
 </details>
