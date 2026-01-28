@@ -180,7 +180,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
@@ -214,7 +214,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
@@ -240,7 +240,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
@@ -332,7 +332,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
         id: cuda
@@ -379,7 +379,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
         with:
@@ -407,7 +407,7 @@ jobs:
   build:
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: shiguredo/github-actions/.github/actions/setup-cuda-toolkit@main
         id: cuda
@@ -488,7 +488,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: shiguredo/github-actions/.github/actions/rust-cache@main
 
@@ -514,7 +514,7 @@ jobs:
 
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         run: rustup default ${{ matrix.toolchain }}

@@ -3,12 +3,12 @@ name: Test Setup CUDA Toolkit Action
 on:
   push:
     paths:
-      - '.github/actions/setup-cuda-toolkit/**'
-      - '.github/workflows/test-setup-cuda-toolkit.yml'
+      - ".github/actions/setup-cuda-toolkit/**"
+      - ".github/workflows/test-setup-cuda-toolkit.yml"
   pull_request:
     paths:
-      - '.github/actions/setup-cuda-toolkit/**'
-      - '.github/workflows/test-setup-cuda-toolkit.yml'
+      - ".github/actions/setup-cuda-toolkit/**"
+      - ".github/workflows/test-setup-cuda-toolkit.yml"
   workflow_dispatch:
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test Setup CUDA Toolkit Action
         id: setup-cuda
@@ -39,7 +39,7 @@ jobs:
         with:
           cuda_version: ${{ matrix.cuda_version }}
           platform: ${{ matrix.platform }}
-          use-cache: 'false'
+          use-cache: "false"
 
       - name: Verify CUDA installation
         run: |
@@ -79,7 +79,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test Setup CUDA Toolkit Action
         id: setup-cuda
@@ -87,7 +87,7 @@ jobs:
         with:
           cuda_version: ${{ matrix.cuda_version }}
           platform: ${{ matrix.platform }}
-          use-cache: 'true'
+          use-cache: "true"
 
       - name: Verify CUDA setup
         shell: pwsh
@@ -124,7 +124,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test Setup CUDA Toolkit Action with cache
         id: setup-cuda
@@ -132,7 +132,7 @@ jobs:
         with:
           cuda_version: ${{ matrix.cuda_version }}
           platform: ${{ matrix.platform }}
-          use-cache: 'true'
+          use-cache: "true"
 
       - name: Verify cache was used
         shell: pwsh

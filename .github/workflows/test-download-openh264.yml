@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test Download OpenH264 Action
         id: download
