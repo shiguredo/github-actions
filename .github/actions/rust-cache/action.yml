@@ -1,6 +1,9 @@
 name: "Rust Cache"
 description: "Cache Rust dependencies and build artifacts"
 inputs:
+  os:
+    description: "Operating system (e.g., ubuntu-22.04, ubuntu-24.04, windows-2022)"
+    required: true
   toolchain:
     description: "Rust toolchain (stable, beta, nightly)"
     required: false
@@ -27,10 +30,10 @@ runs:
           target/
           **/build.rs
           **/Cargo.toml
-        key: ${{ inputs.prefix-key }}-rust-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-${{ github.job }}-${{ hashFiles('Cargo.lock') }}
+        key: ${{ inputs.prefix-key }}-rust-${{ inputs.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-${{ github.job }}-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
-          ${{ inputs.prefix-key }}-rust-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-${{ github.job }}-
-          ${{ inputs.prefix-key }}-rust-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-
+          ${{ inputs.prefix-key }}-rust-${{ inputs.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-${{ github.job }}-
+          ${{ inputs.prefix-key }}-rust-${{ inputs.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-
 
     - name: Show cache status
       shell: bash
