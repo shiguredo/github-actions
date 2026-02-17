@@ -27,7 +27,6 @@ runs:
         path: |
           ~/.cargo/registry/
           ~/.cargo/git/
-          target/
           **/build.rs
           **/Cargo.toml
         key: ${{ inputs.prefix-key }}-rust-${{ inputs.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/build.rs') }}-${{ github.job }}-${{ hashFiles('Cargo.lock') }}
