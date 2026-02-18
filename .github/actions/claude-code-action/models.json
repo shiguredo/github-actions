@@ -5,10 +5,10 @@
   },
   "sonnet": {
     "trigger": "!sonnet",
-    "model": "claude-sonnet-4-5-20250929"
+    "model": "claude-sonnet-4-6"
   },
   "haiku": {
     "trigger": "!haiku",
-    "model": "claude-haiku-4-5-20251001"
+    "model": "claude-haiku-4-5"
   }
 }
