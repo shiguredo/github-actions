@@ -87,12 +87,15 @@ runs:
         # ステータスを小文字に正規化
         STATUS=$(echo "${INPUT_STATUS}" | tr '[:upper:]' '[:lower:]')
 
-        # 別ジョブから呼ばれた場合、同一ワークフロー実行内の他ジョブの失敗を検出
+        # 別ジョブから呼ばれた場合、同一ワークフロー実行内の他ジョブの失敗・キャンセルを検出
         if [[ "${STATUS}" == "success" ]]; then
-          FAILED_JOBS=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/actions/runs/${GITHUB_RUN_ID_VAL}/jobs" \
-            --jq '[.jobs[] | select(.conclusion == "failure")] | length' 2>/dev/null || echo "0")
+          JOBS_JSON=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/actions/runs/${GITHUB_RUN_ID_VAL}/jobs" 2>/dev/null || echo "{}")
+          FAILED_JOBS=$(echo "${JOBS_JSON}" | jq '[.jobs[] | select(.conclusion == "failure")] | length')
+          CANCELLED_JOBS=$(echo "${JOBS_JSON}" | jq '[.jobs[] | select(.conclusion == "cancelled")] | length')
           if [[ "${FAILED_JOBS}" -gt 0 ]]; then
             STATUS="failure"
+          elif [[ "${CANCELLED_JOBS}" -gt 0 ]]; then
+            STATUS="cancelled"
           fi
         fi
 
