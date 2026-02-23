@@ -644,6 +644,15 @@ Fixed 通知には `actions: read` 権限が必要です。
 | `slack_icon_emoji` | ボットアバター絵文字 | - | `:github:` |
 | `slack_footer` | フッターテキスト | - | `Powered by shiguredo/github-actions` |
 | `msg_minimal` | `true` で最小表示、カンマ区切りで個別指定可 (`ref,event,actions_url,commit`) | - | `''` |
+| `notify_mode` | 通知モード (`all`, `failure_and_fixed`, `failure_only`) | - | `all` |
+
+#### 通知モード
+
+| モード | 説明 |
+|--------|------|
+| `all` | 全てのステータスで通知を送信 |
+| `failure_and_fixed` | failure と fixed（前回 failure → 今回 success）のみ通知 |
+| `failure_only` | failure のみ通知 |
 
 #### 色の自動判定
 

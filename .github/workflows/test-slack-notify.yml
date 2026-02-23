@@ -4,24 +4,24 @@ on:
   workflow_dispatch:
     inputs:
       force_failure:
-        description: '意図的にジョブを失敗させる'
+        description: "意図的にジョブを失敗させる"
         required: true
         type: boolean
         default: false
       notify_mode:
-        description: '通知モード'
+        description: "通知モード"
         required: true
         type: choice
         options:
           - failure_and_fixed
           - all
           - failure_only
-        default: 'failure_and_fixed'
+        default: "failure_and_fixed"
       slack_channel:
-        description: '通知先の Slack チャネル'
+        description: "通知先の Slack チャネル"
         required: false
         type: string
-        default: ''
+        default: ""
 
 permissions:
   actions: read
@@ -38,27 +38,11 @@ jobs:
         if: inputs.force_failure == true
         run: exit 1
 
-      - name: 前回の実行結果を取得
-        id: prev
-        if: always() && inputs.notify_mode == 'failure_and_fixed'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PREV=$(gh run list \
-            --workflow "${{ github.workflow }}" \
-            --status completed --limit 1 \
-            --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "unknown")
-          echo "conclusion=${PREV}" >> $GITHUB_OUTPUT
-
       - name: Slack 通知
         uses: ./.github/actions/slack-notify
-        if: >-
-          always() && (
-            inputs.notify_mode == 'all' ||
-            (inputs.notify_mode == 'failure_only' && failure()) ||
-            (inputs.notify_mode == 'failure_and_fixed' && (failure() || steps.prev.outputs.conclusion == 'failure'))
-          )
+        if: always()
         with:
           status: ${{ job.status }}
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           slack_channel: ${{ inputs.slack_channel }}
+          notify_mode: ${{ inputs.notify_mode }}

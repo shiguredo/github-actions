@@ -39,6 +39,10 @@ inputs:
     description: 'true で最小フィールド表示、カンマ区切りで個別指定可 (ref,event,actions_url,commit)'
     required: false
     default: ''
+  notify_mode:
+    description: '通知モード (all: 全て, failure_and_fixed: failure と fixed のみ, failure_only: failure のみ)'
+    required: false
+    default: 'all'
 
 runs:
   using: 'composite'
@@ -57,6 +61,7 @@ runs:
         INPUT_SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
         INPUT_SLACK_FOOTER: ${{ inputs.slack_footer }}
         INPUT_MSG_MINIMAL: ${{ inputs.msg_minimal }}
+        INPUT_NOTIFY_MODE: ${{ inputs.notify_mode }}
         GITHUB_WORKFLOW_NAME: ${{ github.workflow }}
         GITHUB_SERVER_URL_VAL: ${{ github.server_url }}
         GITHUB_ACTOR_VAL: ${{ github.actor }}
@@ -76,6 +81,27 @@ runs:
           --workflow "${GITHUB_WORKFLOW_NAME}" \
           --status completed --limit 1 \
           --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "unknown")
+
+        # notify_mode に応じた送信スキップ判定
+        IS_FIXED="false"
+        if [[ "${STATUS}" == "success" ]] && [[ "${PREV_CONCLUSION}" == "failure" ]]; then
+          IS_FIXED="true"
+        fi
+
+        case "${INPUT_NOTIFY_MODE}" in
+          failure_only)
+            if [[ "${STATUS}" != "failure" ]]; then
+              echo "notify_mode=failure_only: ステータスが failure ではないため通知をスキップ"
+              exit 0
+            fi
+            ;;
+          failure_and_fixed)
+            if [[ "${STATUS}" != "failure" ]] && [[ "${IS_FIXED}" != "true" ]]; then
+              echo "notify_mode=failure_and_fixed: failure でも fixed でもないため通知をスキップ"
+              exit 0
+            fi
+            ;;
+        esac
 
         # ステータス表示テキストと色の決定
         if [[ -n "${INPUT_SLACK_COLOR}" ]]; then
