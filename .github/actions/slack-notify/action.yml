@@ -2,7 +2,7 @@ name: 'Slack Notify'
 description: 'Slack に通知を送信する Composite Action（Docker レス）'
 inputs:
   status:
-    description: 'ジョブのステータス (job.status を渡す。別ジョブの失敗は自動検出)'
+    description: 'ジョブのステータス (job.status を渡す。別ジョブの失敗・キャンセルは自動検出)'
     required: true
   slack_webhook:
     description: 'Slack Incoming Webhook URL'

@@ -18,7 +18,7 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 
 | 名前 | 必須 | デフォルト | 説明 |
 |------|------|-----------|------|
-| `status` | 必須 | - | ジョブステータス (`job.status` を渡す。別ジョブの失敗は自動検出) |
+| `status` | 必須 | - | ジョブステータス (`job.status` を渡す。別ジョブの失敗・キャンセルは自動検出) |
 | `slack_webhook` | 必須 | - | Slack Incoming Webhook URL |
 | `slack_channel` | - | `''` | チャネル上書き |
 | `slack_title` | - | `''` | メッセージタイトル (空なら自動生成: "ステータス: ワークフロー名") |
