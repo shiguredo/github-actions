@@ -30,15 +30,15 @@ inputs:
   slack_icon_emoji_success:
     description: 'Success 時のボットアバター絵文字'
     required: false
-    default: ':o:'
+    default: ':green_circle:'
   slack_icon_emoji_failure:
     description: 'Failure 時のボットアバター絵文字'
     required: false
-    default: ':x:'
+    default: ':red_circle:'
   slack_icon_emoji_fixed:
     description: 'Fixed 時のボットアバター絵文字'
     required: false
-    default: ':wrench:'
+    default: ':blue_circle:'
   slack_footer:
     description: 'フッターテキスト'
     required: false
