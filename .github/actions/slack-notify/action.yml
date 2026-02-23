@@ -34,7 +34,7 @@ inputs:
   slack_icon_emoji_failure:
     description: 'Failure 時のボットアバター絵文字'
     required: false
-    default: ':chiin:'
+    default: ':japanese_ogre:'
   slack_icon_emoji_fixed:
     description: 'Fixed 時のボットアバター絵文字'
     required: false
@@ -167,7 +167,6 @@ runs:
           Failure) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FAILURE}" ;;
           *)       ICON_EMOJI="" ;;
         esac
-
         # タイトルのデフォルト値
         if [[ -n "${INPUT_SLACK_TITLE}" ]]; then
           TITLE="${INPUT_SLACK_TITLE}"
