@@ -16,6 +16,7 @@ on:
           - failure_and_fixed
           - all
           - failure_only
+          - success_only
         default: "failure_and_fixed"
       slack_channel:
         description: "通知先の Slack チャネル"

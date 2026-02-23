@@ -40,7 +40,7 @@ inputs:
     required: false
     default: ''
   notify_mode:
-    description: '通知モード (all: 全て, failure_and_fixed: failure と fixed のみ, failure_only: failure のみ)'
+    description: '通知モード (all: 全て, failure_and_fixed: failure と fixed のみ, failure_only: failure のみ, success_only: success のみ)'
     required: false
     default: 'all'
 
@@ -98,6 +98,12 @@ runs:
           failure_and_fixed)
             if [[ "${STATUS}" != "failure" ]] && [[ "${IS_FIXED}" != "true" ]]; then
               echo "notify_mode=failure_and_fixed: failure でも fixed でもないため通知をスキップ"
+              exit 0
+            fi
+            ;;
+          success_only)
+            if [[ "${STATUS}" != "success" ]]; then
+              echo "notify_mode=success_only: ステータスが success ではないため通知をスキップ"
               exit 0
             fi
             ;;
