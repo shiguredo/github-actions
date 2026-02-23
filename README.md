@@ -807,6 +807,8 @@ jobs:
 
 前回の実行が failure で今回が success の場合、ステータスが `Fixed`、色が青 (`#2196F3`) で通知されます。
 
+re-run で失敗したワークフローを再実行して成功した場合も Fixed として通知されます。アクション内部で `github.run_attempt` を確認し、前回 attempt の結果が failure であれば Fixed と判定します。
+
 </details>
 
 <details>

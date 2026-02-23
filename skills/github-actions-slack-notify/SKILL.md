@@ -46,15 +46,16 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 1. ステータスを小文字に正規化
 2. 別ジョブから呼ばれた場合の失敗検出 (`gh api` で同一ワークフロー実行内の他ジョブの結果を確認)
 3. `gh run list` で前回のワークフロー実行結果を取得 (Fixed 判定用)
-4. `notify_mode` に基づく送信スキップ判定
-5. 色の決定 (手動指定 > 自動判定)
-6. ステータステキスト決定 (Fixed / Success / Failure / Cancelled)
-7. ステータス別アイコン絵文字の選択
-8. タイトル・メッセージ生成
-9. `msg_minimal` に応じたフィールド配列構築
-10. `jq -n` で安全に JSON ペイロード生成
-11. `curl` で Slack Webhook に POST
-12. HTTP ステータスコード確認
+4. re-run (attempt > 1) の場合、前回 attempt の結果で Fixed 判定
+5. `notify_mode` に基づく送信スキップ判定
+6. 色の決定 (手動指定 > 自動判定)
+7. ステータステキスト決定 (Fixed / Success / Failure / Cancelled)
+8. ステータス別アイコン絵文字の選択
+9. タイトル・メッセージ生成
+10. `msg_minimal` に応じたフィールド配列構築
+11. `jq -n` で安全に JSON ペイロード生成
+12. `curl` で Slack Webhook に POST
+13. HTTP ステータスコード確認
 
 ## ステータス別アイコン絵文字
 
