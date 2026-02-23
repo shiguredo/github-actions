@@ -80,6 +80,7 @@ runs:
         GITHUB_SHA_VAL: ${{ github.sha }}
         GITHUB_EVENT_NAME_VAL: ${{ github.event_name }}
         GITHUB_RUN_ID_VAL: ${{ github.run_id }}
+        GITHUB_RUN_ATTEMPT_VAL: ${{ github.run_attempt }}
         GITHUB_REF_NAME_VAL: ${{ github.ref_name }}
       run: |
         set -euo pipefail
@@ -110,6 +111,17 @@ runs:
         IS_FIXED="false"
         if [[ "${STATUS}" == "success" ]] && [[ "${PREV_CONCLUSION}" == "failure" ]]; then
           IS_FIXED="true"
+        fi
+
+        # re-run の場合、前回 attempt の結果で Fixed 判定
+        if [[ "${STATUS}" == "success" ]] && [[ "${IS_FIXED}" == "false" ]] && [[ "${GITHUB_RUN_ATTEMPT_VAL}" -gt 1 ]]; then
+          PREV_ATTEMPT=$((GITHUB_RUN_ATTEMPT_VAL - 1))
+          PREV_ATTEMPT_CONCLUSION=$(gh api \
+            "repos/${GITHUB_REPOSITORY_VAL}/actions/runs/${GITHUB_RUN_ID_VAL}/attempts/${PREV_ATTEMPT}" \
+            --jq '.conclusion' 2>/dev/null || echo "unknown")
+          if [[ "${PREV_ATTEMPT_CONCLUSION}" == "failure" ]]; then
+            IS_FIXED="true"
+          fi
         fi
 
         case "${INPUT_NOTIFY_MODE}" in
