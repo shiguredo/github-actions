@@ -26,9 +26,9 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 | `slack_color` | - | `''` | 色の手動指定 (指定時は自動判定を上書き) |
 | `slack_username` | - | `GitHub Actions` | ボット名 |
 | `slack_icon_emoji` | - | `:github:` | ボットアバター |
-| `slack_icon_emoji_success` | - | `''` | Success 時のボットアバター（未指定時は `slack_icon_emoji`） |
-| `slack_icon_emoji_failure` | - | `''` | Failure 時のボットアバター（未指定時は `slack_icon_emoji`） |
-| `slack_icon_emoji_fixed` | - | `''` | Fixed 時のボットアバター（未指定時は `slack_icon_emoji`） |
+| `slack_icon_emoji_success` | - | `:yatta:` | Success 時のボットアバター（未指定時は `slack_icon_emoji`） |
+| `slack_icon_emoji_failure` | - | `:chiin:` | Failure 時のボットアバター（未指定時は `slack_icon_emoji`） |
+| `slack_icon_emoji_fixed` | - | `:fixed:` | Fixed 時のボットアバター（未指定時は `slack_icon_emoji`） |
 | `slack_footer` | - | `Powered by shiguredo/github-actions` | フッター |
 | `msg_minimal` | - | `''` | `true` で最小表示、カンマ区切りで個別指定 (ref,event,actions_url,commit) |
 | `notify_mode` | - | `all` | 通知モード |

@@ -34,15 +34,15 @@ inputs:
   slack_icon_emoji_success:
     description: 'Success 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
     required: false
-    default: ''
+    default: ':yatta:'
   slack_icon_emoji_failure:
     description: 'Failure 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
     required: false
-    default: ''
+    default: ':chiin:'
   slack_icon_emoji_fixed:
     description: 'Fixed 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
     required: false
-    default: ''
+    default: ':fixed:'
   slack_footer:
     description: 'フッターテキスト'
     required: false
