@@ -27,20 +27,16 @@ inputs:
     description: 'Slack に表示されるボット名'
     required: false
     default: 'GitHub Actions'
-  slack_icon_emoji:
-    description: 'ボットアバター絵文字'
-    required: false
-    default: ':github:'
   slack_icon_emoji_success:
-    description: 'Success 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
+    description: 'Success 時のボットアバター絵文字'
     required: false
     default: ':yatta:'
   slack_icon_emoji_failure:
-    description: 'Failure 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
+    description: 'Failure 時のボットアバター絵文字'
     required: false
     default: ':chiin:'
   slack_icon_emoji_fixed:
-    description: 'Fixed 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
+    description: 'Fixed 時のボットアバター絵文字'
     required: false
     default: ':fixed:'
   slack_footer:
@@ -70,7 +66,6 @@ runs:
         INPUT_SLACK_MESSAGE: ${{ inputs.slack_message }}
         INPUT_SLACK_COLOR: ${{ inputs.slack_color }}
         INPUT_SLACK_USERNAME: ${{ inputs.slack_username }}
-        INPUT_SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
         INPUT_SLACK_ICON_EMOJI_SUCCESS: ${{ inputs.slack_icon_emoji_success }}
         INPUT_SLACK_ICON_EMOJI_FAILURE: ${{ inputs.slack_icon_emoji_failure }}
         INPUT_SLACK_ICON_EMOJI_FIXED: ${{ inputs.slack_icon_emoji_fixed }}
@@ -166,23 +161,11 @@ runs:
         esac
 
         # ステータス別アイコンの決定
-        ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI}"
         case "${STATUS_TEXT}" in
-          Fixed)
-            if [[ -n "${INPUT_SLACK_ICON_EMOJI_FIXED}" ]]; then
-              ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FIXED}"
-            fi
-            ;;
-          Success)
-            if [[ -n "${INPUT_SLACK_ICON_EMOJI_SUCCESS}" ]]; then
-              ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_SUCCESS}"
-            fi
-            ;;
-          Failure)
-            if [[ -n "${INPUT_SLACK_ICON_EMOJI_FAILURE}" ]]; then
-              ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FAILURE}"
-            fi
-            ;;
+          Fixed)   ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FIXED}" ;;
+          Success) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_SUCCESS}" ;;
+          Failure) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FAILURE}" ;;
+          *)       ICON_EMOJI="" ;;
         esac
 
         # タイトルのデフォルト値
