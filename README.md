@@ -651,7 +651,7 @@ slack_notify:
 
 | 名前 | 説明 | 必須 | デフォルト |
 |------|------|------|------------|
-| `status` | ジョブのステータス (`${{ job.status }}`) | ✓ | - |
+| `status` | ジョブのステータス (`${{ job.status }}` を渡す。別ジョブの失敗は自動検出) | ✓ | - |
 | `slack_webhook` | Slack Incoming Webhook URL | ✓ | - |
 | `slack_channel` | Slack チャネル（Webhook のデフォルトを上書き） | - | `''` |
 | `slack_title` | メッセージタイトル | - | `''`（自動生成） |
