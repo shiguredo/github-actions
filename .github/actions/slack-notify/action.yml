@@ -31,6 +31,18 @@ inputs:
     description: 'ボットアバター絵文字'
     required: false
     default: ':github:'
+  slack_icon_emoji_success:
+    description: 'Success 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
+    required: false
+    default: ''
+  slack_icon_emoji_failure:
+    description: 'Failure 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
+    required: false
+    default: ''
+  slack_icon_emoji_fixed:
+    description: 'Fixed 時のボットアバター絵文字（未指定時は slack_icon_emoji を使用）'
+    required: false
+    default: ''
   slack_footer:
     description: 'フッターテキスト'
     required: false
@@ -59,6 +71,9 @@ runs:
         INPUT_SLACK_COLOR: ${{ inputs.slack_color }}
         INPUT_SLACK_USERNAME: ${{ inputs.slack_username }}
         INPUT_SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
+        INPUT_SLACK_ICON_EMOJI_SUCCESS: ${{ inputs.slack_icon_emoji_success }}
+        INPUT_SLACK_ICON_EMOJI_FAILURE: ${{ inputs.slack_icon_emoji_failure }}
+        INPUT_SLACK_ICON_EMOJI_FIXED: ${{ inputs.slack_icon_emoji_fixed }}
         INPUT_SLACK_FOOTER: ${{ inputs.slack_footer }}
         INPUT_MSG_MINIMAL: ${{ inputs.msg_minimal }}
         INPUT_NOTIFY_MODE: ${{ inputs.notify_mode }}
@@ -150,6 +165,26 @@ runs:
             ;;
         esac
 
+        # ステータス別アイコンの決定
+        ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI}"
+        case "${STATUS_TEXT}" in
+          Fixed)
+            if [[ -n "${INPUT_SLACK_ICON_EMOJI_FIXED}" ]]; then
+              ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FIXED}"
+            fi
+            ;;
+          Success)
+            if [[ -n "${INPUT_SLACK_ICON_EMOJI_SUCCESS}" ]]; then
+              ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_SUCCESS}"
+            fi
+            ;;
+          Failure)
+            if [[ -n "${INPUT_SLACK_ICON_EMOJI_FAILURE}" ]]; then
+              ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FAILURE}"
+            fi
+            ;;
+        esac
+
         # タイトルのデフォルト値
         if [[ -n "${INPUT_SLACK_TITLE}" ]]; then
           TITLE="${INPUT_SLACK_TITLE}"
@@ -222,7 +257,7 @@ runs:
         # ペイロード構築（jq -n で安全に JSON を生成）
         PAYLOAD=$(jq -n \
           --arg username "${INPUT_SLACK_USERNAME}" \
-          --arg icon_emoji "${INPUT_SLACK_ICON_EMOJI}" \
+          --arg icon_emoji "${ICON_EMOJI}" \
           --arg color "${COLOR}" \
           --arg author_name "${GITHUB_ACTOR_VAL}" \
           --arg author_link "${GITHUB_SERVER_URL_VAL}/${GITHUB_ACTOR_VAL}" \
