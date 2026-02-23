@@ -641,10 +641,12 @@ Fixed 通知には `actions: read` 権限が必要です。
 | `slack_message` | メッセージ本文 | - | `''`（最新コミットメッセージ） |
 | `slack_color` | 色の手動指定（`good`, `danger`, `#RRGGBB` など） | - | `''`（自動判定） |
 | `slack_username` | Slack に表示されるボット名 | - | `GitHub Actions` |
-| `slack_icon_emoji` | ボットアバター絵文字 | - | `:github:` |
+| `slack_icon_emoji_success` | Success 時のボットアバター絵文字 | - | `:green_circle:` |
+| `slack_icon_emoji_failure` | Failure 時のボットアバター絵文字 | - | `:red_circle:` |
+| `slack_icon_emoji_fixed` | Fixed 時のボットアバター絵文字 | - | `:blue_circle:` |
 | `slack_footer` | フッターテキスト | - | `Powered by shiguredo/github-actions` |
 | `msg_minimal` | `true` で最小表示、カンマ区切りで個別指定可 (`ref,event,actions_url,commit`) | - | `''` |
-| `notify_mode` | 通知モード (`all`, `failure_and_fixed`, `failure_only`, `success_only`) | - | `all` |
+| `notify_mode` | 通知モード (`all`, `failure_and_fixed`, `failure_only`, `success_only`) | - | `failure_and_fixed` |
 
 #### 通知モード
 
@@ -786,7 +788,44 @@ jobs:
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
 ```
 
-前回の実行が failure で今回が success の場合、ステータスが `Fixed`、色が緑 (`#36a64f`) で通知されます。
+前回の実行が failure で今回が success の場合、ステータスが `Fixed`、色が青 (`#2196F3`) で通知されます。
+
+</details>
+
+<details>
+<summary>Fixed 判定の精度を上げるために concurrency を設定する（推奨）</summary>
+
+Fixed 判定は同一ワークフロー・同一ブランチの前回実行結果を `gh run list` で取得して行います。同時実行が発生すると意図しない判定になる可能性があるため、`concurrency` の設定を推奨します。
+
+```yaml
+name: CI
+
+on: [push]
+
+permissions:
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build and Test
+        run: |
+          make build
+          make test
+
+      - uses: shiguredo/github-actions/.github/actions/slack-notify@main
+        if: always()
+        with:
+          status: ${{ job.status }}
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+```
 
 </details>
 
