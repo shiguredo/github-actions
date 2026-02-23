@@ -84,7 +84,7 @@ runs:
           case "${STATUS}" in
             success)
               if [[ "${PREV_CONCLUSION}" == "failure" ]]; then
-                COLOR="#36a64f"
+                COLOR="#2196F3"
               else
                 COLOR="good"
               fi

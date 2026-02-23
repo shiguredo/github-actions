@@ -650,7 +650,7 @@ Fixed 通知には `actions: read` 権限が必要です。
 | 条件 | 色 |
 |------|-----|
 | `slack_color` が指定済み | 指定値をそのまま使用 |
-| `success` + 前回 `failure` | `#36a64f`（Fixed） |
+| `success` + 前回 `failure` | `#2196F3`（Fixed） |
 | `success` | `good` |
 | `failure` | `danger` |
 | その他 | `#808080` |
