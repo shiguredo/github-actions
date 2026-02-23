@@ -30,7 +30,7 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 | `slack_icon_emoji_fixed` | - | `:fixed:` | Fixed 時のボットアバター |
 | `slack_footer` | - | `Powered by shiguredo/github-actions` | フッター |
 | `msg_minimal` | - | `''` | `true` で最小表示、カンマ区切りで個別指定 (ref,event,actions_url,commit) |
-| `notify_mode` | - | `all` | 通知モード |
+| `notify_mode` | - | `failure_and_fixed` | 通知モード |
 
 ## notify_mode
 

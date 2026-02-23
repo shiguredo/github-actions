@@ -50,7 +50,7 @@ inputs:
   notify_mode:
     description: '通知モード (all: 全て, failure_and_fixed: failure と fixed のみ, failure_only: failure のみ, success_only: success のみ)'
     required: false
-    default: 'all'
+    default: 'failure_and_fixed'
 
 runs:
   using: 'composite'
