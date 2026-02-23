@@ -8,6 +8,11 @@ on:
         required: true
         type: boolean
         default: false
+      slack_channel:
+        description: '通知先の Slack チャネル'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   actions: read
@@ -30,3 +35,4 @@ jobs:
         with:
           status: ${{ job.status }}
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+          slack_channel: ${{ inputs.slack_channel }}
