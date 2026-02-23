@@ -80,6 +80,7 @@ runs:
         GITHUB_SHA_VAL: ${{ github.sha }}
         GITHUB_EVENT_NAME_VAL: ${{ github.event_name }}
         GITHUB_RUN_ID_VAL: ${{ github.run_id }}
+        GITHUB_REF_NAME_VAL: ${{ github.ref_name }}
       run: |
         set -euo pipefail
 
@@ -89,6 +90,7 @@ runs:
         # 前回のワークフロー実行結果を取得（Fixed 判定用）
         PREV_CONCLUSION=$(gh run list \
           --workflow "${GITHUB_WORKFLOW_NAME}" \
+          --branch "${GITHUB_REF_NAME_VAL}" \
           --status completed --limit 1 \
           --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "unknown")
 
