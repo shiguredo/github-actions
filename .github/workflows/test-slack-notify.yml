@@ -8,6 +8,11 @@ on:
         required: true
         type: boolean
         default: false
+      notify_on_fixed:
+        description: 'Fixed 通知を有効にする（前回 failure → 今回 success 時に通知）'
+        required: true
+        type: boolean
+        default: false
       slack_channel:
         description: '通知先の Slack チャネル'
         required: false
@@ -31,7 +36,7 @@ jobs:
 
       - name: Slack 通知
         uses: ./.github/actions/slack-notify
-        if: always()
+        if: always() && (failure() || inputs.notify_on_fixed == true)
         with:
           status: ${{ job.status }}
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
