@@ -48,18 +48,27 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 3. `notify_mode` に基づく送信スキップ判定
 4. 色の決定 (手動指定 > 自動判定)
 5. ステータステキスト決定 (Fixed / Success / Failure / Cancelled)
-6. タイトル・メッセージ生成
-7. `msg_minimal` に応じたフィールド配列構築
-8. `jq -n` で安全に JSON ペイロード生成
-9. `curl` で Slack Webhook に POST
-10. HTTP ステータスコード確認
+6. ステータス別アイコン絵文字の選択
+7. タイトル・メッセージ生成
+8. `msg_minimal` に応じたフィールド配列構築
+9. `jq -n` で安全に JSON ペイロード生成
+10. `curl` で Slack Webhook に POST
+11. HTTP ステータスコード確認
+
+## ステータス別アイコン絵文字
+
+- ステータス (Success / Failure / Fixed) に応じて異なるボットアバター絵文字を表示
+- Slack Incoming Webhook の `icon_emoji` はカスタム絵文字に非対応。標準 Slack 絵文字のみ使用可能
+- 連続投稿時は Slack がメッセージをグループ化し、最初のメッセージのアバターのみ表示される
 
 ## Fixed 通知
 
-- 条件: 前回 failure かつ 今回 success
+- 条件: 同一ワークフロー・同一ブランチで前回 failure かつ 今回 success
+- `gh run list --workflow --branch --status completed --limit 1` で前回結果を取得
 - 色: `#2196F3` (青)
 - ステータステキスト: `Fixed`
 - `actions: read` 権限が必要 (`gh run list` のため)
+- 同時実行で判定が不正確になる可能性があるため、ワークフローに `concurrency` の設定を推奨
 
 ## 色の自動判定
 
