@@ -1,0 +1,234 @@
+name: 'Slack Notify'
+description: 'Slack に通知を送信する Composite Action（Docker レス）'
+inputs:
+  status:
+    description: 'ジョブのステータス (job.status を渡す)'
+    required: true
+  slack_webhook:
+    description: 'Slack Incoming Webhook URL'
+    required: true
+  slack_channel:
+    description: 'Slack チャネル（Webhook のデフォルトを上書き）'
+    required: false
+    default: ''
+  slack_title:
+    description: 'メッセージタイトル'
+    required: false
+    default: ''
+  slack_message:
+    description: 'メッセージ本文'
+    required: false
+    default: ''
+  slack_color:
+    description: '色の手動指定（good, danger, #RRGGBB など）。指定時は自動判定を上書き'
+    required: false
+    default: ''
+  slack_username:
+    description: 'Slack に表示されるボット名'
+    required: false
+    default: 'GitHub Actions'
+  slack_icon_emoji:
+    description: 'ボットアバター絵文字'
+    required: false
+    default: ':github:'
+  slack_footer:
+    description: 'フッターテキスト'
+    required: false
+    default: 'Powered by shiguredo/github-actions'
+  msg_minimal:
+    description: 'true で最小フィールド表示、カンマ区切りで個別指定可 (ref,event,actions_url,commit)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - id: notify
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        INPUT_STATUS: ${{ inputs.status }}
+        INPUT_SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
+        INPUT_SLACK_CHANNEL: ${{ inputs.slack_channel }}
+        INPUT_SLACK_TITLE: ${{ inputs.slack_title }}
+        INPUT_SLACK_MESSAGE: ${{ inputs.slack_message }}
+        INPUT_SLACK_COLOR: ${{ inputs.slack_color }}
+        INPUT_SLACK_USERNAME: ${{ inputs.slack_username }}
+        INPUT_SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
+        INPUT_SLACK_FOOTER: ${{ inputs.slack_footer }}
+        INPUT_MSG_MINIMAL: ${{ inputs.msg_minimal }}
+        GITHUB_WORKFLOW_NAME: ${{ github.workflow }}
+        GITHUB_SERVER_URL_VAL: ${{ github.server_url }}
+        GITHUB_ACTOR_VAL: ${{ github.actor }}
+        GITHUB_REPOSITORY_VAL: ${{ github.repository }}
+        GITHUB_REF_VAL: ${{ github.ref }}
+        GITHUB_SHA_VAL: ${{ github.sha }}
+        GITHUB_EVENT_NAME_VAL: ${{ github.event_name }}
+        GITHUB_RUN_ID_VAL: ${{ github.run_id }}
+      run: |
+        set -euo pipefail
+
+        # ステータスを小文字に正規化
+        STATUS=$(echo "${INPUT_STATUS}" | tr '[:upper:]' '[:lower:]')
+
+        # 前回のワークフロー実行結果を取得（Fixed 判定用）
+        PREV_CONCLUSION=$(gh run list \
+          --workflow "${GITHUB_WORKFLOW_NAME}" \
+          --status completed --limit 1 \
+          --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "unknown")
+
+        # ステータス表示テキストと色の決定
+        if [[ -n "${INPUT_SLACK_COLOR}" ]]; then
+          COLOR="${INPUT_SLACK_COLOR}"
+        else
+          case "${STATUS}" in
+            success)
+              if [[ "${PREV_CONCLUSION}" == "failure" ]]; then
+                COLOR="#36a64f"
+              else
+                COLOR="good"
+              fi
+              ;;
+            failure)
+              COLOR="danger"
+              ;;
+            *)
+              COLOR="#808080"
+              ;;
+          esac
+        fi
+
+        # ステータス表示テキストの決定
+        case "${STATUS}" in
+          success)
+            if [[ "${PREV_CONCLUSION}" == "failure" ]]; then
+              STATUS_TEXT="Fixed"
+            else
+              STATUS_TEXT="Success"
+            fi
+            ;;
+          failure)
+            STATUS_TEXT="Failure"
+            ;;
+          cancelled)
+            STATUS_TEXT="Cancelled"
+            ;;
+          *)
+            STATUS_TEXT="${STATUS}"
+            ;;
+        esac
+
+        # タイトルのデフォルト値
+        if [[ -n "${INPUT_SLACK_TITLE}" ]]; then
+          TITLE="${INPUT_SLACK_TITLE}"
+        else
+          TITLE="${STATUS_TEXT}: ${GITHUB_WORKFLOW_NAME}"
+        fi
+
+        # メッセージのデフォルト値（空の場合は最新コミットメッセージ）
+        if [[ -n "${INPUT_SLACK_MESSAGE}" ]]; then
+          MESSAGE="${INPUT_SLACK_MESSAGE}"
+        else
+          MESSAGE=$(git log -1 --format='%s' 2>/dev/null || echo "")
+        fi
+
+        # 短縮 SHA
+        COMMIT_SHA="${GITHUB_SHA_VAL:0:7}"
+
+        # URL 構築
+        ACTIONS_URL="${GITHUB_SERVER_URL_VAL}/${GITHUB_REPOSITORY_VAL}/actions/runs/${GITHUB_RUN_ID_VAL}"
+        COMMIT_URL="${GITHUB_SERVER_URL_VAL}/${GITHUB_REPOSITORY_VAL}/commit/${GITHUB_SHA_VAL}"
+
+        # フィールド構築
+        FIELD_REF=$(jq -n '{title: "Ref", value: $v, short: true}' --arg v "${GITHUB_REF_VAL}")
+        FIELD_EVENT=$(jq -n '{title: "Event", value: $v, short: true}' --arg v "${GITHUB_EVENT_NAME_VAL}")
+        FIELD_ACTIONS_URL=$(jq -n '{title: "Actions URL", value: $v, short: true}' \
+          --arg v "<${ACTIONS_URL}|${GITHUB_WORKFLOW_NAME}>")
+        FIELD_COMMIT=$(jq -n '{title: "Commit", value: $v, short: true}' \
+          --arg v "<${COMMIT_URL}|${COMMIT_SHA}>")
+        FIELD_STATUS=$(jq -n '{title: "Status", value: $v, short: true}' --arg v "${STATUS_TEXT}")
+
+        # msg_minimal に応じたフィールド配列の構築
+        MINIMAL="${INPUT_MSG_MINIMAL}"
+        if [[ "${MINIMAL}" == "true" ]]; then
+          # 最小表示: Status のみ
+          FIELDS=$(jq -n --argjson status "${FIELD_STATUS}" '[$status]')
+        elif [[ -n "${MINIMAL}" ]]; then
+          # カンマ区切りで指定されたフィールドのみ
+          FIELDS="[]"
+          IFS=',' read -ra PARTS <<< "${MINIMAL}"
+          for part in "${PARTS[@]}"; do
+            part=$(echo "${part}" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+            case "${part}" in
+              ref)
+                FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_REF}" '. + [$f]')
+                ;;
+              event)
+                FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_EVENT}" '. + [$f]')
+                ;;
+              actions_url)
+                FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_ACTIONS_URL}" '. + [$f]')
+                ;;
+              commit)
+                FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_COMMIT}" '. + [$f]')
+                ;;
+            esac
+          done
+          # 指定フィールドに Status を追加
+          FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_STATUS}" '. + [$f]')
+        else
+          # 全フィールド表示
+          FIELDS=$(jq -n \
+            --argjson ref "${FIELD_REF}" \
+            --argjson event "${FIELD_EVENT}" \
+            --argjson actions_url "${FIELD_ACTIONS_URL}" \
+            --argjson commit "${FIELD_COMMIT}" \
+            --argjson status "${FIELD_STATUS}" \
+            '[$ref, $event, $actions_url, $commit, $status]')
+        fi
+
+        # ペイロード構築（jq -n で安全に JSON を生成）
+        PAYLOAD=$(jq -n \
+          --arg username "${INPUT_SLACK_USERNAME}" \
+          --arg icon_emoji "${INPUT_SLACK_ICON_EMOJI}" \
+          --arg color "${COLOR}" \
+          --arg author_name "${GITHUB_ACTOR_VAL}" \
+          --arg author_link "${GITHUB_SERVER_URL_VAL}/${GITHUB_ACTOR_VAL}" \
+          --arg author_icon "${GITHUB_SERVER_URL_VAL}/${GITHUB_ACTOR_VAL}.png?size=32" \
+          --arg title "${TITLE}" \
+          --arg title_link "${ACTIONS_URL}" \
+          --arg text "${MESSAGE}" \
+          --argjson fields "${FIELDS}" \
+          --arg footer "${INPUT_SLACK_FOOTER}" \
+          '{
+            username: $username,
+            icon_emoji: $icon_emoji,
+            attachments: [{
+              color: $color,
+              author_name: $author_name,
+              author_link: $author_link,
+              author_icon: $author_icon,
+              title: $title,
+              title_link: $title_link,
+              text: $text,
+              fields: $fields,
+              footer: $footer
+            }]
+          }')
+
+        # チャネル指定がある場合はペイロードに追加
+        if [[ -n "${INPUT_SLACK_CHANNEL}" ]]; then
+          PAYLOAD=$(echo "${PAYLOAD}" | jq --arg ch "${INPUT_SLACK_CHANNEL}" '. + {channel: $ch}')
+        fi
+
+        # Slack に送信
+        HTTP_STATUS=$(curl -s -o /tmp/slack_response.txt -w '%{http_code}' \
+          -X POST \
+          -H 'Content-Type: application/json' \
+          -d "${PAYLOAD}" \
+          "${INPUT_SLACK_WEBHOOK}")
+
+        if [[ "${HTTP_STATUS}" -lt 200 ]] || [[ "${HTTP_STATUS}" -ge 300 ]]; then
+          RESPONSE_BODY=$(cat /tmp/slack_response.txt 2>/dev/null || echo "")
+          echo "::warning::Slack 通知の送信に失敗しました (HTTP ${HTTP_STATUS}): ${RESPONSE_BODY}"
+        fi

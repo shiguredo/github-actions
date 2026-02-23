@@ -1,0 +1,32 @@
+name: Test Slack Notify Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_failure:
+        description: '意図的にジョブを失敗させる'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: 意図的に失敗させる
+        if: inputs.force_failure == true
+        run: exit 1
+
+      - name: Slack 通知
+        uses: ./.github/actions/slack-notify
+        if: always()
+        with:
+          status: ${{ job.status }}
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
