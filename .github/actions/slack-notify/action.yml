@@ -197,7 +197,7 @@ runs:
         if [[ -n "${INPUT_SLACK_TITLE}" ]]; then
           TITLE="${INPUT_SLACK_TITLE}"
         else
-          TITLE="${STATUS_TEXT}: ${GITHUB_WORKFLOW_NAME}"
+          TITLE="${STATUS_TEXT}: ${GITHUB_REPOSITORY_VAL} - ${GITHUB_WORKFLOW_NAME}"
         fi
 
         # メッセージのデフォルト値（空の場合は最新コミットメッセージ）
