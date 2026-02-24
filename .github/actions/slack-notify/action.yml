@@ -44,7 +44,7 @@ inputs:
     required: false
     default: 'Powered by shiguredo/github-actions'
   msg_minimal:
-    description: 'true で最小フィールド表示、カンマ区切りで個別指定可 (ref,event,actions_url,commit)'
+    description: 'true で最小フィールド表示、カンマ区切りで個別指定可 (ref,event,repository,commit)'
     required: false
     default: ''
   notify_mode:
@@ -197,7 +197,7 @@ runs:
         if [[ -n "${INPUT_SLACK_TITLE}" ]]; then
           TITLE="${INPUT_SLACK_TITLE}"
         else
-          TITLE="${STATUS_TEXT}: ${GITHUB_REPOSITORY_VAL} - ${GITHUB_WORKFLOW_NAME}"
+          TITLE="${GITHUB_WORKFLOW_NAME}"
         fi
 
         # メッセージのデフォルト値（空の場合は最新コミットメッセージ）
@@ -217,8 +217,9 @@ runs:
         # フィールド構築
         FIELD_REF=$(jq -n '{title: "Ref", value: $v, short: true}' --arg v "${GITHUB_REF_VAL}")
         FIELD_EVENT=$(jq -n '{title: "Event", value: $v, short: true}' --arg v "${GITHUB_EVENT_NAME_VAL}")
-        FIELD_ACTIONS_URL=$(jq -n '{title: "Actions URL", value: $v, short: true}' \
-          --arg v "<${ACTIONS_URL}|${GITHUB_WORKFLOW_NAME}>")
+        REPO_URL="${GITHUB_SERVER_URL_VAL}/${GITHUB_REPOSITORY_VAL}"
+        FIELD_REPOSITORY=$(jq -n '{title: "Repository", value: $v, short: true}' \
+          --arg v "<${REPO_URL}|${GITHUB_REPOSITORY_VAL}>")
         FIELD_COMMIT=$(jq -n '{title: "Commit", value: $v, short: true}' \
           --arg v "<${COMMIT_URL}|${COMMIT_SHA}>")
         FIELD_STATUS=$(jq -n '{title: "Status", value: $v, short: true}' --arg v "${STATUS_TEXT}")
@@ -241,8 +242,8 @@ runs:
               event)
                 FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_EVENT}" '. + [$f]')
                 ;;
-              actions_url)
-                FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_ACTIONS_URL}" '. + [$f]')
+              repository)
+                FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_REPOSITORY}" '. + [$f]')
                 ;;
               commit)
                 FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_COMMIT}" '. + [$f]')
@@ -256,10 +257,10 @@ runs:
           FIELDS=$(jq -n \
             --argjson ref "${FIELD_REF}" \
             --argjson event "${FIELD_EVENT}" \
-            --argjson actions_url "${FIELD_ACTIONS_URL}" \
+            --argjson repository "${FIELD_REPOSITORY}" \
             --argjson commit "${FIELD_COMMIT}" \
             --argjson status "${FIELD_STATUS}" \
-            '[$ref, $event, $actions_url, $commit, $status]')
+            '[$ref, $event, $repository, $commit, $status]')
         fi
 
         # ペイロード構築（jq -n で安全に JSON を生成）
