@@ -38,13 +38,13 @@ inputs:
   slack_icon_emoji_fixed:
     description: 'Fixed 時のボットアバター絵文字'
     required: false
-    default: ':blue_circle:'
+    default: ':large_blue_circle:'
   slack_footer:
     description: 'フッターテキスト'
     required: false
     default: 'Powered by shiguredo/github-actions'
   msg_minimal:
-    description: 'true で最小フィールド表示、カンマ区切りで個別指定可 (ref,event,repository,commit)'
+    description: 'true で最小フィールド表示、カンマ区切りで個別指定可 (repository,workflow,ref,event,commit)'
     required: false
     default: ''
   notify_mode:
@@ -193,18 +193,21 @@ runs:
           Failure) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FAILURE}" ;;
           *)       ICON_EMOJI="" ;;
         esac
-        # タイトルのデフォルト値
+        # コミットメッセージを GitHub API で取得
+        COMMIT_MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" --jq '.commit.message | split("\n")[0]' 2>/dev/null || echo "")
+
+        # タイトルのデフォルト値（コミットメッセージ）
         if [[ -n "${INPUT_SLACK_TITLE}" ]]; then
           TITLE="${INPUT_SLACK_TITLE}"
         else
-          TITLE="${GITHUB_WORKFLOW_NAME}"
+          TITLE="${COMMIT_MESSAGE}"
         fi
 
-        # メッセージのデフォルト値（空の場合は最新コミットメッセージ）
+        # メッセージのデフォルト値
         if [[ -n "${INPUT_SLACK_MESSAGE}" ]]; then
           MESSAGE="${INPUT_SLACK_MESSAGE}"
         else
-          MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" --jq '.commit.message | split("\n")[0]' 2>/dev/null || echo "")
+          MESSAGE=""
         fi
 
         # 短縮 SHA
@@ -215,11 +218,13 @@ runs:
         COMMIT_URL="${GITHUB_SERVER_URL_VAL}/${GITHUB_REPOSITORY_VAL}/commit/${GITHUB_SHA_VAL}"
 
         # フィールド構築
-        FIELD_REF=$(jq -n '{title: "Ref", value: $v, short: true}' --arg v "${GITHUB_REF_VAL}")
-        FIELD_EVENT=$(jq -n '{title: "Event", value: $v, short: true}' --arg v "${GITHUB_EVENT_NAME_VAL}")
         REPO_URL="${GITHUB_SERVER_URL_VAL}/${GITHUB_REPOSITORY_VAL}"
         FIELD_REPOSITORY=$(jq -n '{title: "Repository", value: $v, short: true}' \
           --arg v "<${REPO_URL}|${GITHUB_REPOSITORY_VAL}>")
+        FIELD_WORKFLOW=$(jq -n '{title: "Workflow", value: $v, short: true}' \
+          --arg v "<${ACTIONS_URL}|${GITHUB_WORKFLOW_NAME}>")
+        FIELD_REF=$(jq -n '{title: "Ref", value: $v, short: true}' --arg v "${GITHUB_REF_VAL}")
+        FIELD_EVENT=$(jq -n '{title: "Event", value: $v, short: true}' --arg v "${GITHUB_EVENT_NAME_VAL}")
         FIELD_COMMIT=$(jq -n '{title: "Commit", value: $v, short: true}' \
           --arg v "<${COMMIT_URL}|${COMMIT_SHA}>")
         FIELD_STATUS=$(jq -n '{title: "Status", value: $v, short: true}' --arg v "${STATUS_TEXT}")
@@ -245,6 +250,9 @@ runs:
               repository)
                 FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_REPOSITORY}" '. + [$f]')
                 ;;
+              workflow)
+                FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_WORKFLOW}" '. + [$f]')
+                ;;
               commit)
                 FIELDS=$(echo "${FIELDS}" | jq --argjson f "${FIELD_COMMIT}" '. + [$f]')
                 ;;
@@ -255,12 +263,13 @@ runs:
         else
           # 全フィールド表示
           FIELDS=$(jq -n \
+            --argjson repository "${FIELD_REPOSITORY}" \
+            --argjson workflow "${FIELD_WORKFLOW}" \
             --argjson ref "${FIELD_REF}" \
             --argjson event "${FIELD_EVENT}" \
-            --argjson repository "${FIELD_REPOSITORY}" \
             --argjson commit "${FIELD_COMMIT}" \
             --argjson status "${FIELD_STATUS}" \
-            '[$ref, $event, $repository, $commit, $status]')
+            '[$repository, $workflow, $ref, $event, $commit, $status]')
         fi
 
         # ペイロード構築（jq -n で安全に JSON を生成）
