@@ -659,15 +659,15 @@ slack_notify:
 | `status` | ジョブのステータス (`${{ job.status }}` を渡す。別ジョブの失敗・キャンセルは自動検出) | ✓ | - |
 | `slack_webhook` | Slack Incoming Webhook URL | ✓ | - |
 | `slack_channel` | Slack チャネル（Webhook のデフォルトを上書き） | - | `''` |
-| `slack_title` | メッセージタイトル | - | `''`（自動生成: ワークフロー名） |
-| `slack_message` | メッセージ本文 | - | `''`（GitHub API で最新コミットメッセージを取得） |
+| `slack_title` | メッセージタイトル | - | `''`（自動生成: コミットメッセージ） |
+| `slack_message` | メッセージ本文 | - | `''` |
 | `slack_color` | 色の手動指定（`good`, `danger`, `#RRGGBB` など） | - | `''`（自動判定） |
 | `slack_username` | Slack に表示されるボット名 | - | `GitHub Actions` |
 | `slack_icon_emoji_success` | Success 時のボットアバター絵文字 | - | `:green_circle:` |
 | `slack_icon_emoji_failure` | Failure 時のボットアバター絵文字 | - | `:red_circle:` |
-| `slack_icon_emoji_fixed` | Fixed 時のボットアバター絵文字 | - | `:blue_circle:` |
+| `slack_icon_emoji_fixed` | Fixed 時のボットアバター絵文字 | - | `:large_blue_circle:` |
 | `slack_footer` | フッターテキスト | - | `Powered by shiguredo/github-actions` |
-| `msg_minimal` | `true` で最小表示、カンマ区切りで個別指定可 (`ref,event,repository,commit`) | - | `''` |
+| `msg_minimal` | `true` で最小表示、カンマ区切りで個別指定可 (`repository,workflow,ref,event,commit`) | - | `''` |
 | `notify_mode` | 通知モード (`all`, `failure_and_fixed`, `failure_only`, `success_only`) | - | `failure_and_fixed` |
 
 #### 通知モード
