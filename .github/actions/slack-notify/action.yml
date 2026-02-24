@@ -204,7 +204,7 @@ runs:
         if [[ -n "${INPUT_SLACK_MESSAGE}" ]]; then
           MESSAGE="${INPUT_SLACK_MESSAGE}"
         else
-          MESSAGE=$(git log -1 --format='%s' 2>/dev/null || echo "")
+          MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" --jq '.commit.message | split("\n")[0]' 2>/dev/null || echo "")
         fi
 
         # 短縮 SHA
