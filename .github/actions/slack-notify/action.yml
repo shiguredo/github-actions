@@ -129,19 +129,19 @@ runs:
         case "${INPUT_NOTIFY_MODE}" in
           failure_only)
             if [[ "${STATUS}" != "failure" ]]; then
-              echo "notify_mode=failure_only: ステータスが failure ではないため通知をスキップ"
+              echo "notify_mode=failure_only: 通知をスキップ (ステータス=${STATUS})"
               exit 0
             fi
             ;;
           failure_and_fixed)
             if [[ "${STATUS}" != "failure" ]] && [[ "${IS_FIXED}" != "true" ]]; then
-              echo "notify_mode=failure_and_fixed: failure でも fixed でもないため通知をスキップ"
+              echo "notify_mode=failure_and_fixed: 通知をスキップ (ステータス=${STATUS}, 前回結論=${PREV_CONCLUSION}, fixed=${IS_FIXED})"
               exit 0
             fi
             ;;
           success_only)
             if [[ "${STATUS}" != "success" ]]; then
-              echo "notify_mode=success_only: ステータスが success ではないため通知をスキップ"
+              echo "notify_mode=success_only: 通知をスキップ (ステータス=${STATUS})"
               exit 0
             fi
             ;;
