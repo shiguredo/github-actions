@@ -100,12 +100,14 @@ runs:
           fi
         fi
 
-        # 前回のワークフロー実行結果を取得（Fixed 判定用）
+        # 前回のワークフロー実行結果を取得（Fixed 判定用、現在の実行を除外）
         PREV_CONCLUSION=$(gh run list \
           --workflow "${GITHUB_WORKFLOW_NAME}" \
           --branch "${GITHUB_REF_NAME_VAL}" \
-          --status completed --limit 1 \
-          --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "unknown")
+          --status completed --limit 10 \
+          --json databaseId,conclusion \
+          -q "[.[] | select(.databaseId != (\"${GITHUB_RUN_ID_VAL}\" | tonumber))] | .[0].conclusion" \
+          2>/dev/null || echo "unknown")
 
         # notify_mode に応じた送信スキップ判定
         IS_FIXED="false"
@@ -151,7 +153,7 @@ runs:
         else
           case "${STATUS}" in
             success)
-              if [[ "${PREV_CONCLUSION}" == "failure" ]]; then
+              if [[ "${IS_FIXED}" == "true" ]]; then
                 COLOR="#2196F3"
               else
                 COLOR="good"
@@ -169,7 +171,7 @@ runs:
         # ステータス表示テキストの決定
         case "${STATUS}" in
           success)
-            if [[ "${PREV_CONCLUSION}" == "failure" ]]; then
+            if [[ "${IS_FIXED}" == "true" ]]; then
               STATUS_TEXT="Fixed"
             else
               STATUS_TEXT="Success"
