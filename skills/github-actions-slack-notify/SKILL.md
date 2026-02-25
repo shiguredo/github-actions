@@ -74,6 +74,7 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 - 条件: 同一ワークフロー・同一ブランチで前回 failure かつ 今回 success
 - re-run の場合: 前回 attempt が failure かつ今回 attempt が success でも Fixed と判定
 - `gh run list --workflow --branch --status completed --limit 10` で前回結果を取得 (現在の実行を `databaseId` で除外)
+- 前回結論 (`PREV_CONCLUSION`) の値: 具体値 (`success`, `failure` 等) / `none` (初回実行) / `unknown` (API 失敗)
 - re-run 時は `gh api` で前回 attempt の conclusion を確認 (`github.run_attempt` > 1 の場合)
 - 色: `#2196F3` (青)
 - ステータステキスト: `Fixed`
