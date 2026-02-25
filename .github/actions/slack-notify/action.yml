@@ -106,8 +106,16 @@ runs:
           --branch "${GITHUB_REF_NAME_VAL}" \
           --status completed --limit 10 \
           --json databaseId,conclusion \
-          -q "[.[] | select(.databaseId != (\"${GITHUB_RUN_ID_VAL}\" | tonumber))] | .[0].conclusion" \
+          -q "[.[] | select(.databaseId != (\"${GITHUB_RUN_ID_VAL}\" | tonumber))] | .[0].conclusion // \"none\"" \
           2>/dev/null || echo "unknown")
+        # PREV_CONCLUSION の値:
+        #   具体値 (success, failure 等): 前回実行の結論
+        #   none: 前回の実行が存在しない (初回実行)
+        #   unknown: gh run list の API 呼び出しに失敗
+        #   空文字: gh run list は成功したが結果が空 (completed な実行がない)
+        if [[ -z "${PREV_CONCLUSION}" ]]; then
+          PREV_CONCLUSION="none"
+        fi
 
         # notify_mode に応じた送信スキップ判定
         IS_FIXED="false"
