@@ -102,6 +102,7 @@ runs:
 
         # 前回のワークフロー実行結果を取得（Fixed 判定用、現在の実行を除外）
         PREV_CONCLUSION=$(gh run list \
+          --repo "${GITHUB_REPOSITORY_VAL}" \
           --workflow "${GITHUB_WORKFLOW_NAME}" \
           --branch "${GITHUB_REF_NAME_VAL}" \
           --status completed --limit 10 \
@@ -112,7 +113,6 @@ runs:
         #   具体値 (success, failure 等): 前回実行の結論
         #   none: 前回の実行が存在しない (初回実行)
         #   unknown: gh run list の API 呼び出しに失敗
-        #   空文字: gh run list は成功したが結果が空 (completed な実行がない)
         if [[ -z "${PREV_CONCLUSION}" ]]; then
           PREV_CONCLUSION="none"
         fi
