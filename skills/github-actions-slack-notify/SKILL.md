@@ -41,13 +41,19 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 | `failure_only` | failure のみ |
 | `success_only` | success のみ |
 
+スキップ時はログにステータスや前回結論を出力する:
+
+- `failure_only`: `通知をスキップ (ステータス=success)`
+- `failure_and_fixed`: `通知をスキップ (ステータス=success, 前回結論=success, fixed=false)`
+- `success_only`: `通知をスキップ (ステータス=failure)`
+
 ## 処理フロー
 
 1. ステータスを小文字に正規化
 2. 別ジョブから呼ばれた場合の失敗検出 (`gh api` で同一ワークフロー実行内の他ジョブの結果を確認)
 3. `gh run list` で前回のワークフロー実行結果を取得 (Fixed 判定用)
 4. re-run (attempt > 1) の場合、前回 attempt の結果で Fixed 判定
-5. `notify_mode` に基づく送信スキップ判定
+5. `notify_mode` に基づく送信スキップ判定 (スキップ時はステータス・前回結論・fixed 判定結果をログ出力)
 6. 色の決定 (手動指定 > 自動判定)
 7. ステータステキスト決定 (Fixed / Success / Failure / Cancelled)
 8. ステータス別アイコン絵文字の選択
@@ -67,7 +73,7 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 
 - 条件: 同一ワークフロー・同一ブランチで前回 failure かつ 今回 success
 - re-run の場合: 前回 attempt が failure かつ今回 attempt が success でも Fixed と判定
-- `gh run list --workflow --branch --status completed --limit 1` で前回結果を取得
+- `gh run list --workflow --branch --status completed --limit 10` で前回結果を取得 (現在の実行を `databaseId` で除外)
 - re-run 時は `gh api` で前回 attempt の conclusion を確認 (`github.run_attempt` > 1 の場合)
 - 色: `#2196F3` (青)
 - ステータステキスト: `Fixed`
