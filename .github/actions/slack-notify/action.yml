@@ -204,7 +204,9 @@ runs:
           *)       ICON_EMOJI="" ;;
         esac
         # コミットメッセージを GitHub API で取得
-        COMMIT_MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" --jq '.commit.message | split("\n")[0]' 2>/dev/null || echo "")
+        if ! COMMIT_MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" --jq '.commit.message | split("\n")[0]' 2>/dev/null); then
+          COMMIT_MESSAGE=""
+        fi
 
         # タイトルのデフォルト値（コミットメッセージ）
         if [[ -n "${INPUT_SLACK_TITLE}" ]]; then

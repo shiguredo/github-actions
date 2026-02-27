@@ -79,6 +79,7 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 - 色: `#2196F3` (青)
 - ステータステキスト: `Fixed`
 - `actions: read` 権限が必要 (`gh run list` のため)
+- `contents: read` 権限が必要 (コミットメッセージ取得のため)
 - 同時実行で判定が不正確になる可能性があるため、ワークフローに `concurrency` の設定を推奨
 
 ## 色の自動判定
@@ -106,7 +107,7 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 - `notify_mode` (choice): failure_and_fixed / all / failure_only / success_only
 - `slack_channel` (string): 通知先チャネル
 
-必要な権限: `actions: read`
+必要な権限: `actions: read`, `contents: read`
 runs-on: `ubuntu-slim`
 
 ## rtCamp/action-slack-notify との差異
@@ -124,7 +125,12 @@ runs-on: `ubuntu-slim`
 - 通知専用の別ジョブとして実行することを推奨
 - 環境変数経由でパラメータを受け取る (`env:` で `INPUT_*` にマッピング)
 - `GH_TOKEN: ${{ github.token }}` が必要 (`gh run list` / `gh api` のため)
+- `contents: read` 権限が必要 (コミットメッセージ取得の `gh api /repos/{owner}/{repo}/commits/{sha}` のため)
+  - public リポジトリではコミット情報が公開データのため `contents: read` なしでも動作する
+  - private リポジトリでは `contents: read` がないと 403 エラーになりコミットメッセージが取得できない
+  - 権限不足時はコミットメッセージが空文字にフォールバックし、タイトルが空欄になるが通知自体は送信される
 - `GITHUB_*_VAL` で GitHub コンテキスト値を渡す (シェル内での `${{ }}` 展開を避ける)
 - `set -euo pipefail` で厳密なエラーハンドリング
+- `gh api` のエラーハンドリング: `gh api` は HTTP エラー時にエラー JSON を**標準出力**に出力するため、`$(... 2>/dev/null || echo "")` ではエラー JSON がキャプチャされてしまう。`if !` 構文で終了コードを判定し、失敗時はデフォルト値にフォールバックさせる
 - `jq -n` による安全な JSON 生成 (シェルインジェクション防止)
 - HTTP ステータスコードが 200-299 以外の場合は `::warning::` で通知
