@@ -733,7 +733,7 @@ jobs:
   with:
     status: ${{ job.status }}
     slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
-    slack_channel: '#deployments'
+    slack_channel: 'deployments'
     slack_title: 'デプロイ通知'
     slack_message: 'v1.2.3 のデプロイが完了しました'
     slack_username: 'Deploy Bot'
