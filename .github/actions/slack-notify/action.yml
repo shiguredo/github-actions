@@ -8,9 +8,8 @@ inputs:
     description: 'Slack Incoming Webhook URL'
     required: true
   slack_channel:
-    description: 'Slack チャネル（Webhook のデフォルトを上書き）'
-    required: false
-    default: ''
+    description: 'Slack チャネル名（# なし）'
+    required: true
   slack_title:
     description: 'メッセージタイトル'
     required: false

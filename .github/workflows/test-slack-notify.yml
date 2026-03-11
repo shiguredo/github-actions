@@ -19,10 +19,9 @@ on:
           - success_only
         default: "failure_and_fixed"
       slack_channel:
-        description: "通知先の Slack チャネル"
-        required: false
+        description: "通知先の Slack チャネル名（# なし）"
+        required: true
         type: string
-        default: ""
 
 permissions:
   actions: read
