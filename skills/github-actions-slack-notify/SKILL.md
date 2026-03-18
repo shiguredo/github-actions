@@ -12,15 +12,43 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 - アクション定義: `.github/actions/slack-notify/action.yml`
 - テストワークフロー: `.github/workflows/test-slack-notify.yml`
 - rtCamp/action-slack-notify の互換実装 (Docker レス)
-- 元リポジトリ (参考): `/tmp/action-slack-notify/`
+
+## 使い方
+
+```yaml
+slack-notify:
+    needs: ci
+    if: always()
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    steps:
+      - uses: shiguredo/github-actions/.github/actions/slack-notify@main
+        with:
+          status: ${{ job.status }}
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+          slack_channel: ruri
+          notify_mode: failure_and_fixed
+        env:
+          GH_TOKEN: ${{ github.token }}
+```
+
+プライベートリポジトリの場合はコミットメッセージ取得のために `contents: read` 権限を追加する:
+
+```yaml
+    permissions:
+      actions: read
+      contents: read
+```
 
 ## 入力パラメータ
 
 | 名前 | 必須 | デフォルト | 説明 |
 |------|------|-----------|------|
-| `status` | 必須 | - | ジョブステータス (`job.status` を渡す。別ジョブの失敗・キャンセルは自動検出) |
+| `status` | 必須 | - | ジョブステータス (job.status を渡す。別ジョブの失敗・キャンセルは自動検出) |
 | `slack_webhook` | 必須 | - | Slack Incoming Webhook URL |
-| `slack_channel` | - | `''` | チャネル上書き |
+| `slack_channel` | 必須 | - | Slack チャネル名 (# なし) |
 | `slack_title` | - | `''` | メッセージタイトル (空なら自動生成: コミットメッセージ) |
 | `slack_message` | - | `''` | メッセージ本文 |
 | `slack_color` | - | `''` | 色の手動指定 (指定時は自動判定を上書き) |
@@ -75,11 +103,10 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 - re-run の場合: 前回 attempt が failure かつ今回 attempt が success でも Fixed と判定
 - `gh run list --workflow --branch --status completed --limit 10` で前回結果を取得 (現在の実行を `databaseId` で除外)
 - 前回結論 (`PREV_CONCLUSION`) の値: 具体値 (`success`, `failure` 等) / `none` (初回実行) / `unknown` (API 失敗)
-- re-run 時は `gh api` で前回 attempt の conclusion を確認 (`github.run_attempt` > 1 の場合)
+- re-run 時は gh api で前回 attempt の conclusion を確認 (github.run_attempt > 1 の場合)
 - 色: `#2196F3` (青)
 - ステータステキスト: `Fixed`
 - `actions: read` 権限が必要 (`gh run list` のため)
-- `contents: read` 権限が必要 (コミットメッセージ取得のため)
 - 同時実行で判定が不正確になる可能性があるため、ワークフローに `concurrency` の設定を推奨
 
 ## 色の自動判定
@@ -105,15 +132,15 @@ shiguredo/github-actions リポジトリで提供される Slack 通知用 Compo
 入力:
 - `force_failure` (boolean): 意図的にジョブを失敗させる
 - `notify_mode` (choice): failure_and_fixed / all / failure_only / success_only
-- `slack_channel` (string): 通知先チャネル
+- `slack_channel` (string): 通知先チャネル (# なし)
 
-必要な権限: `actions: read`, `contents: read`
+必要な権限: `actions: read`
 runs-on: `ubuntu-slim`
 
 ## rtCamp/action-slack-notify との差異
 
 - Docker レス (Composite Action) のため起動が高速
-- `status` 入力を追加 (rtCamp は環境変数 `SLACK_COLOR` で `${{ job.status }}` を渡す)
+- status 入力を追加 (rtCamp は環境変数 SLACK_COLOR で job.status を渡す)
 - `notify_mode` を追加 (all / failure_and_fixed / failure_only / success_only)
 - Fixed 通知機能を追加 (前回 failure → 今回 success の自動検知)
 - 環境変数ではなく `with` で入力を渡す
@@ -124,13 +151,14 @@ runs-on: `ubuntu-slim`
 - `actions/checkout` 不要 (コミットメッセージは GitHub API で取得)
 - 通知専用の別ジョブとして実行することを推奨
 - 環境変数経由でパラメータを受け取る (`env:` で `INPUT_*` にマッピング)
-- `GH_TOKEN: ${{ github.token }}` が必要 (`gh run list` / `gh api` のため)
-- `contents: read` 権限が必要 (コミットメッセージ取得の `gh api /repos/{owner}/{repo}/commits/{sha}` のため)
-  - public リポジトリではコミット情報が公開データのため `contents: read` なしでも動作する
-  - private リポジトリでは `contents: read` がないと 403 エラーになりコミットメッセージが取得できない
+- GH_TOKEN を env で渡す必要がある (gh run list / gh api のため)
+- `actions: read` 権限が必要 (`gh run list` による Fixed 判定のため)
+- `contents: read` 権限はプライベートリポジトリでのみ必要 (コミットメッセージ取得の `gh api /repos/{owner}/{repo}/commits/{sha}` のため)
+  - パブリックリポジトリではコミット情報が公開データのため `contents: read` なしでも動作する
+  - プライベートリポジトリでは `contents: read` がないと 403 エラーになりコミットメッセージが取得できない
   - 権限不足時はコミットメッセージが空文字にフォールバックし、タイトルが空欄になるが通知自体は送信される
-- `GITHUB_*_VAL` で GitHub コンテキスト値を渡す (シェル内での `${{ }}` 展開を避ける)
+- GITHUB_*_VAL で GitHub コンテキスト値を渡す (シェル内での式展開を避ける)
 - `set -euo pipefail` で厳密なエラーハンドリング
-- `gh api` のエラーハンドリング: `gh api` は HTTP エラー時にエラー JSON を**標準出力**に出力するため、`$(... 2>/dev/null || echo "")` ではエラー JSON がキャプチャされてしまう。`if !` 構文で終了コードを判定し、失敗時はデフォルト値にフォールバックさせる
+- gh api のエラーハンドリング: gh api は HTTP エラー時にエラー JSON を**標準出力**に出力するため、コマンド置換でキャプチャするとエラー JSON が混入する。if ! 構文で終了コードを判定し、失敗時はデフォルト値にフォールバックさせる
 - `jq -n` による安全な JSON 生成 (シェルインジェクション防止)
 - HTTP ステータスコードが 200-299 以外の場合は `::warning::` で通知
