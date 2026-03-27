@@ -4,14 +4,10 @@ inputs:
   api_key:
     description: 'Anthropic API key (required, for users with write permission, sonnet/haiku only)'
     required: true
-  oauth_user:
-    description: 'OAuth user (optional, enables all models including opus)'
+  oauth_users:
+    description: 'JSON mapping of GitHub username to OAuth token (optional, enables all models including opus). Example: {"user1": "token1", "user2": "token2"}'
     required: false
-    default: ''
-  oauth_token:
-    description: 'OAuth token for the oauth_user (optional)'
-    required: false
-    default: ''
+    default: '{}'
 
 runs:
   using: 'composite'
@@ -35,16 +31,20 @@ runs:
           echo "No valid trigger phrase found (!opus, !sonnet, !haiku)"
         fi
 
-    # コメント投稿者が OAuth ユーザーかどうかを判定
+    # コメント投稿者が OAuth ユーザーかどうかを判定し、トークンを取得
     - id: check-oauth-user
       if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true'
       shell: bash
+      env:
+        OAUTH_USERS_JSON: ${{ inputs.oauth_users }}
       run: |
         COMMENT_USER="${{ github.event.comment.user.login }}"
-        OAUTH_USER="${{ inputs.oauth_user }}"
+        OAUTH_TOKEN=$(echo "${OAUTH_USERS_JSON}" | jq -r --arg user "${COMMENT_USER}" '.[$user] // empty')
 
-        if [[ -n "${OAUTH_USER}" ]] && [[ "${COMMENT_USER}" == "${OAUTH_USER}" ]]; then
+        if [[ -n "${OAUTH_TOKEN}" ]]; then
           echo "is_oauth_user=true" >> $GITHUB_OUTPUT
+          echo "::add-mask::${OAUTH_TOKEN}"
+          echo "oauth_token=${OAUTH_TOKEN}" >> $GITHUB_OUTPUT
         else
           echo "is_oauth_user=false" >> $GITHUB_OUTPUT
         fi
@@ -100,7 +100,7 @@ runs:
     - uses: anthropics/claude-code-action@v1
       if: steps.determine-auth-type.outputs.auth_type == 'oauth'
       with:
-        claude_code_oauth_token: ${{ inputs.oauth_token }}
+        claude_code_oauth_token: ${{ steps.check-oauth-user.outputs.oauth_token }}
         github_token: ${{ github.token }}
         trigger_phrase: ${{ steps.determine-model.outputs.trigger }}
         claude_args: |
