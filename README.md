@@ -664,7 +664,10 @@ Fixed 通知と別ジョブの失敗検出には `actions: read` 権限が必要
 
 #### 別ジョブの失敗・キャンセル自動検出
 
-通知ステップを別ジョブに分離している場合でも、`status: ${{ job.status }}` をそのまま渡すだけで動作します。アクション内部で同一ワークフロー実行内の他ジョブの結果を `gh api` で確認し、failure や cancelled があればステータスを自動的に上書きします。
+通知ステップを別ジョブに分離している場合でも、`status: ${{ job.status }}` をそのまま渡すだけで動作します。アクション内部で同一ワークフロー実行内の他ジョブの結果を `gh api` で確認し、ステータスを自動的に上書きします。
+
+- failure が 1 件でもある場合 → `failure` として扱う（cancelled が混在していても failure）
+- failure がなく cancelled のみの場合 → `cancelled` として扱う（`notify_cancelled` で通知を制御）
 
 ```yaml
 slack_notify:
@@ -709,6 +712,8 @@ slack_notify:
 | `slack_footer` | フッターテキスト | - | `Powered by shiguredo/github-actions` |
 | `msg_minimal` | `true` で最小表示、カンマ区切りで個別指定可 (`repository,workflow,ref,event,commit`) | - | `''` |
 | `notify_mode` | 通知モード (`all`, `failure_and_fixed`, `failure_only`, `success_only`) | - | `failure_and_fixed` |
+| `notify_cancelled` | cancelled 時に通知するかどうか (`true`/`false`) | - | `true` |
+| `slack_icon_emoji_cancelled` | Cancelled 時のボットアバター絵文字 | - | `:white_circle:` |
 
 #### 通知モード
 
@@ -727,6 +732,7 @@ slack_notify:
 | `success` + 前回 `failure` | `#2196F3`（Fixed） |
 | `success` | `good` |
 | `failure` | `danger` |
+| `cancelled` | `#808080` |
 | その他 | `#808080` |
 
 #### 使用例

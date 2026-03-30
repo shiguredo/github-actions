@@ -50,6 +50,14 @@ inputs:
     description: '通知モード (all: 全て, failure_and_fixed: failure と fixed のみ, failure_only: failure のみ, success_only: success のみ)'
     required: false
     default: 'failure_and_fixed'
+  notify_cancelled:
+    description: 'cancelled 時に通知するかどうか (true: 通知する, false: 通知しない)'
+    required: false
+    default: 'true'
+  slack_icon_emoji_cancelled:
+    description: 'Cancelled 時のボットアバター絵文字'
+    required: false
+    default: ':white_circle:'
 
 runs:
   using: 'composite'
@@ -71,6 +79,8 @@ runs:
         INPUT_SLACK_FOOTER: ${{ inputs.slack_footer }}
         INPUT_MSG_MINIMAL: ${{ inputs.msg_minimal }}
         INPUT_NOTIFY_MODE: ${{ inputs.notify_mode }}
+        INPUT_NOTIFY_CANCELLED: ${{ inputs.notify_cancelled }}
+        INPUT_SLACK_ICON_EMOJI_CANCELLED: ${{ inputs.slack_icon_emoji_cancelled }}
         GITHUB_WORKFLOW_NAME: ${{ github.workflow }}
         GITHUB_SERVER_URL_VAL: ${{ github.server_url }}
         GITHUB_ACTOR_VAL: ${{ github.actor }}
@@ -133,26 +143,34 @@ runs:
           fi
         fi
 
-        case "${INPUT_NOTIFY_MODE}" in
-          failure_only)
-            if [[ "${STATUS}" != "failure" ]]; then
-              echo "notify_mode=failure_only: 通知をスキップ (ステータス=${STATUS})"
-              exit 0
-            fi
-            ;;
-          failure_and_fixed)
-            if [[ "${STATUS}" != "failure" ]] && [[ "${IS_FIXED}" != "true" ]]; then
-              echo "notify_mode=failure_and_fixed: 通知をスキップ (ステータス=${STATUS}, 前回結論=${PREV_CONCLUSION}, fixed=${IS_FIXED})"
-              exit 0
-            fi
-            ;;
-          success_only)
-            if [[ "${STATUS}" != "success" ]]; then
-              echo "notify_mode=success_only: 通知をスキップ (ステータス=${STATUS})"
-              exit 0
-            fi
-            ;;
-        esac
+        # cancelled の通知判定（notify_mode とは独立）
+        if [[ "${STATUS}" == "cancelled" ]]; then
+          if [[ "${INPUT_NOTIFY_CANCELLED}" != "true" ]]; then
+            echo "notify_cancelled=false: 通知をスキップ (ステータス=${STATUS})"
+            exit 0
+          fi
+        else
+          case "${INPUT_NOTIFY_MODE}" in
+            failure_only)
+              if [[ "${STATUS}" != "failure" ]]; then
+                echo "notify_mode=failure_only: 通知をスキップ (ステータス=${STATUS})"
+                exit 0
+              fi
+              ;;
+            failure_and_fixed)
+              if [[ "${STATUS}" != "failure" ]] && [[ "${IS_FIXED}" != "true" ]]; then
+                echo "notify_mode=failure_and_fixed: 通知をスキップ (ステータス=${STATUS}, 前回結論=${PREV_CONCLUSION}, fixed=${IS_FIXED})"
+                exit 0
+              fi
+              ;;
+            success_only)
+              if [[ "${STATUS}" != "success" ]]; then
+                echo "notify_mode=success_only: 通知をスキップ (ステータス=${STATUS})"
+                exit 0
+              fi
+              ;;
+          esac
+        fi
 
         # ステータス表示テキストと色の決定
         if [[ -n "${INPUT_SLACK_COLOR}" ]]; then
@@ -197,10 +215,11 @@ runs:
 
         # ステータス別アイコンの決定
         case "${STATUS_TEXT}" in
-          Fixed)   ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FIXED}" ;;
-          Success) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_SUCCESS}" ;;
-          Failure) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FAILURE}" ;;
-          *)       ICON_EMOJI="" ;;
+          Fixed)     ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FIXED}" ;;
+          Success)   ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_SUCCESS}" ;;
+          Failure)   ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_FAILURE}" ;;
+          Cancelled) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_CANCELLED}" ;;
+          *)         ICON_EMOJI="" ;;
         esac
         # コミットメッセージを GitHub API で取得
         if ! COMMIT_MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" --jq '.commit.message | split("\n")[0]' 2>/dev/null); then
