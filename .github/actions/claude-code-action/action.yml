@@ -22,8 +22,9 @@ runs:
     - id: check-trigger
       if: steps.check-permission.outputs.has-permission == 'true'
       shell: bash
+      env:
+        COMMENT_BODY: ${{ github.event.comment.body }}
       run: |
-        COMMENT_BODY='${{ github.event.comment.body }}'
         if echo "${COMMENT_BODY}" | grep -qE '!(opus|sonnet|haiku)'; then
           echo "has_trigger=true" >> $GITHUB_OUTPUT
         else
@@ -36,9 +37,9 @@ runs:
       if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true'
       shell: bash
       env:
+        COMMENT_USER: ${{ github.event.comment.user.login }}
         OAUTH_USERS_JSON: ${{ inputs.oauth_users }}
       run: |
-        COMMENT_USER="${{ github.event.comment.user.login }}"
         OAUTH_TOKEN=$(echo "${OAUTH_USERS_JSON}" | jq -r --arg user "${COMMENT_USER}" '.[$user] // empty')
 
         if [[ -n "${OAUTH_TOKEN}" ]]; then
@@ -53,8 +54,9 @@ runs:
     - id: determine-model
       if: steps.check-permission.outputs.has-permission == 'true' && steps.check-trigger.outputs.has_trigger == 'true'
       shell: bash
+      env:
+        COMMENT_BODY: ${{ github.event.comment.body }}
       run: |
-        COMMENT_BODY='${{ github.event.comment.body }}'
         MODELS_JSON="${{ github.action_path }}/models.json"
 
         if echo "${COMMENT_BODY}" | grep -q '!opus'; then
