@@ -221,9 +221,34 @@ runs:
           Cancelled) ICON_EMOJI="${INPUT_SLACK_ICON_EMOJI_CANCELLED}" ;;
           *)         ICON_EMOJI="" ;;
         esac
-        # コミットメッセージを GitHub API で取得
-        if ! COMMIT_MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" --jq '.commit.message | split("\n")[0]' 2>/dev/null); then
-          COMMIT_MESSAGE=""
+        # コミットメッセージを取得（pull_request の場合は PR タイトル優先）
+        COMMIT_MESSAGE=""
+        if [[ "${GITHUB_EVENT_NAME_VAL}" == "pull_request" ]] || [[ "${GITHUB_EVENT_NAME_VAL}" == "pull_request_target" ]]; then
+          # refs/pull/NUMBER/merge から PR 番号を抽出
+          PR_NUMBER=$(echo "${GITHUB_REF_VAL}" | sed -n 's|refs/pull/\([0-9]*\)/merge|\1|p')
+          if [[ -n "${PR_NUMBER}" ]]; then
+            PR_INFO=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/pulls/${PR_NUMBER}" \
+              --jq '{title: .title, head_sha: .head.sha}' 2>/dev/null || echo "{}")
+            PR_TITLE=$(echo "${PR_INFO}" | jq -r '.title // empty' 2>/dev/null)
+            if [[ -n "${PR_TITLE}" ]]; then
+              COMMIT_MESSAGE="${PR_TITLE}"
+            else
+              # PR タイトル取得失敗時は head コミットのメッセージにフォールバック
+              HEAD_SHA=$(echo "${PR_INFO}" | jq -r '.head_sha // empty' 2>/dev/null)
+              if [[ -n "${HEAD_SHA}" ]]; then
+                COMMIT_MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${HEAD_SHA}" \
+                  --jq '.commit.message | split("\n")[0]' 2>/dev/null || echo "")
+              fi
+            fi
+          fi
+        fi
+
+        # pull_request 以外、または上記で取得できなかった場合はコミットメッセージを取得
+        if [[ -z "${COMMIT_MESSAGE}" ]]; then
+          if ! COMMIT_MESSAGE=$(gh api "repos/${GITHUB_REPOSITORY_VAL}/commits/${GITHUB_SHA_VAL}" \
+            --jq '.commit.message | split("\n")[0]' 2>/dev/null); then
+            COMMIT_MESSAGE=""
+          fi
         fi
 
         # タイトルのデフォルト値（コミットメッセージ）
