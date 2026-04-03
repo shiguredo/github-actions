@@ -53,7 +53,7 @@ slack-notify:
 | `slack_message` | - | `''` | メッセージ本文 |
 | `slack_color` | - | `''` | 色の手動指定 (指定時は自動判定を上書き) |
 | `slack_username` | - | `GitHub Actions` | ボット名 |
-| `slack_icon_emoji_success` | - | `:green_circle:` | Success 時のボットアバター |
+| `slack_icon_emoji_success` | - | `:large_green_circle:` | Success 時のボットアバター |
 | `slack_icon_emoji_failure` | - | `:red_circle:` | Failure 時のボットアバター |
 | `slack_icon_emoji_fixed` | - | `:large_blue_circle:` | Fixed 時のボットアバター |
 | `slack_footer` | - | `Powered by shiguredo/github-actions` | フッター |

@@ -706,7 +706,7 @@ slack_notify:
 | `slack_message` | メッセージ本文 | - | `''` |
 | `slack_color` | 色の手動指定（`good`, `danger`, `#RRGGBB` など） | - | `''`（自動判定） |
 | `slack_username` | Slack に表示されるボット名 | - | `GitHub Actions` |
-| `slack_icon_emoji_success` | Success 時のボットアバター絵文字 | - | `:green_circle:` |
+| `slack_icon_emoji_success` | Success 時のボットアバター絵文字 | - | `:large_green_circle:` |
 | `slack_icon_emoji_failure` | Failure 時のボットアバター絵文字 | - | `:red_circle:` |
 | `slack_icon_emoji_fixed` | Fixed 時のボットアバター絵文字 | - | `:large_blue_circle:` |
 | `slack_footer` | フッターテキスト | - | `Powered by shiguredo/github-actions` |

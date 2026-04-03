@@ -29,7 +29,7 @@ inputs:
   slack_icon_emoji_success:
     description: 'Success 時のボットアバター絵文字'
     required: false
-    default: ':green_circle:'
+    default: ':large_green_circle:'
   slack_icon_emoji_failure:
     description: 'Failure 時のボットアバター絵文字'
     required: false
