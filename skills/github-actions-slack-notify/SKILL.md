@@ -109,6 +109,13 @@ slack-notify:
 - `actions: read` 権限が必要 (`gh run list` のため)
 - 同時実行で判定が不正確になる可能性があるため、ワークフローに `concurrency` の設定を推奨
 
+## 全 skipped 時のジョブスキップ
+
+- Composite Action の内部から自身のジョブを `skipped` 状態にはできない (GitHub Actions の仕様上、ジョブのスキップ判定はジョブ実行前の `if:` でのみ行われる)
+- Composite Action 側で `exit 0` してもジョブは `success` として完了するため、ワークフロー全体が緑に見えて実態と乖離する
+- 全 skipped 時に通知ジョブもスキップしたい場合は、呼び出し側のワークフローで `if:` に `needs.*.result != 'skipped'` を列挙する
+- Composite Action 側では「全 skipped」を特別扱いしない (ステータス判定は failure / cancelled のみを上書き、それ以外は `status` 入力をそのまま使用)
+
 ## 色の自動判定
 
 | 条件 | 色 |

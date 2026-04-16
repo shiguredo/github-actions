@@ -681,6 +681,26 @@ slack_notify:
         slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
 ```
 
+#### 全ジョブが skipped のときに通知ジョブ自体をスキップする
+
+Composite Action の内部から自身のジョブを `skipped` 状態にすることはできません。全ジョブが skipped のときに通知ジョブも実行せず、ワークフロー全体を `skipped` として表示したい場合は、呼び出し側の `if:` で `needs.*.result` を参照してジョブ自体をスキップします。
+
+```yaml
+slack_notify:
+  needs: [build, test, lint]
+  runs-on: ubuntu-slim
+  if: |
+    always()
+    && (needs.build.result != 'skipped'
+     || needs.test.result != 'skipped'
+     || needs.lint.result != 'skipped')
+  steps:
+    - uses: shiguredo/github-actions/.github/actions/slack-notify@main
+      with:
+        status: ${{ job.status }}
+        slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+```
+
 #### 基本的な使い方
 
 ```yaml
