@@ -1,7 +1,7 @@
 {
   "opus": {
     "trigger": "!opus",
-    "model": "claude-opus-4-6"
+    "model": "claude-opus-4-7"
   },
   "sonnet": {
     "trigger": "!sonnet",
