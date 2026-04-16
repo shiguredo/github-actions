@@ -106,9 +106,14 @@ runs:
             --paginate --jq '.jobs[]' 2>/dev/null | jq -s '.' || echo "[]")
           FAILED_JOBS=$(echo "${ALL_JOBS}" | jq '[.[] | select(.conclusion == "failure")] | length')
           CANCELLED_JOBS=$(echo "${ALL_JOBS}" | jq '[.[] | select(.conclusion == "cancelled")] | length')
+          SKIPPED_JOBS=$(echo "${ALL_JOBS}" | jq '[.[] | select(.conclusion == "skipped")] | length')
+          SUCCESS_JOBS=$(echo "${ALL_JOBS}" | jq '[.[] | select(.conclusion == "success")] | length')
           if [[ "${FAILED_JOBS}" -gt 0 ]]; then
             STATUS="failure"
           elif [[ "${CANCELLED_JOBS}" -gt 0 ]]; then
+            STATUS="cancelled"
+          elif [[ "${SKIPPED_JOBS}" -gt 0 ]] && [[ "${SUCCESS_JOBS}" -le 1 ]]; then
+            # 自分自身（通知ジョブ）以外に成功ジョブがなく、skipped ジョブがある場合は cancelled 扱い
             STATUS="cancelled"
           fi
         fi
