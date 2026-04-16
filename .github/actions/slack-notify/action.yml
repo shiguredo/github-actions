@@ -113,8 +113,9 @@ runs:
           elif [[ "${CANCELLED_JOBS}" -gt 0 ]]; then
             STATUS="cancelled"
           elif [[ "${SKIPPED_JOBS}" -gt 0 ]] && [[ "${SUCCESS_JOBS}" -le 1 ]]; then
-            # 自分自身（通知ジョブ）以外に成功ジョブがなく、skipped ジョブがある場合は cancelled 扱い
-            STATUS="cancelled"
+            # 自分自身（通知ジョブ）以外に成功ジョブがなく、全ジョブが skipped の場合は通知をスキップ
+            echo "全ジョブが skipped のため通知をスキップ"
+            exit 0
           fi
         fi
 
