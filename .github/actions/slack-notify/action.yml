@@ -114,17 +114,19 @@ runs:
         fi
 
         # 前回のワークフロー実行結果を取得（Fixed 判定用、現在の実行を除外）
+        # skipped/cancelled は「実質的な結果を出していない」ため除外し、
+        # 直近の success/failure を前回結論として扱う
         PREV_CONCLUSION=$(gh run list \
           --repo "${GITHUB_REPOSITORY_VAL}" \
           --workflow "${GITHUB_WORKFLOW_NAME}" \
           --branch "${GITHUB_REF_NAME_VAL}" \
-          --status completed --limit 10 \
+          --status completed --limit 20 \
           --json databaseId,conclusion \
-          -q "[.[] | select(.databaseId != (\"${GITHUB_RUN_ID_VAL}\" | tonumber))] | .[0].conclusion // \"none\"" \
+          -q "[.[] | select(.databaseId != (\"${GITHUB_RUN_ID_VAL}\" | tonumber)) | select(.conclusion != \"skipped\" and .conclusion != \"cancelled\")] | .[0].conclusion // \"none\"" \
           2>/dev/null || echo "unknown")
         # PREV_CONCLUSION の値:
-        #   具体値 (success, failure 等): 前回実行の結論
-        #   none: 前回の実行が存在しない (初回実行)
+        #   具体値 (success, failure 等): skipped/cancelled を除外した直近実行の結論
+        #   none: 対象の前回実行が存在しない (初回実行または skipped/cancelled のみ)
         #   unknown: gh run list の API 呼び出しに失敗
         if [[ -z "${PREV_CONCLUSION}" ]]; then
           PREV_CONCLUSION="none"
@@ -136,15 +138,22 @@ runs:
           IS_FIXED="true"
         fi
 
-        # re-run の場合、前回 attempt の結果で Fixed 判定
+        # re-run の場合、過去 attempt を新しい順に遡って Fixed 判定
+        # skipped/cancelled は実質的な結果を出していないためスキップし、
+        # 直近の success/failure を前回 attempt の結論として扱う
         if [[ "${STATUS}" == "success" ]] && [[ "${IS_FIXED}" == "false" ]] && [[ "${GITHUB_RUN_ATTEMPT_VAL}" -gt 1 ]]; then
-          PREV_ATTEMPT=$((GITHUB_RUN_ATTEMPT_VAL - 1))
-          PREV_ATTEMPT_CONCLUSION=$(gh api \
-            "repos/${GITHUB_REPOSITORY_VAL}/actions/runs/${GITHUB_RUN_ID_VAL}/attempts/${PREV_ATTEMPT}" \
-            --jq '.conclusion' 2>/dev/null || echo "unknown")
-          if [[ "${PREV_ATTEMPT_CONCLUSION}" == "failure" ]]; then
-            IS_FIXED="true"
-          fi
+          for ((ATTEMPT=GITHUB_RUN_ATTEMPT_VAL-1; ATTEMPT>=1; ATTEMPT--)); do
+            ATTEMPT_CONCLUSION=$(gh api \
+              "repos/${GITHUB_REPOSITORY_VAL}/actions/runs/${GITHUB_RUN_ID_VAL}/attempts/${ATTEMPT}" \
+              --jq '.conclusion' 2>/dev/null || echo "unknown")
+            if [[ "${ATTEMPT_CONCLUSION}" == "skipped" ]] || [[ "${ATTEMPT_CONCLUSION}" == "cancelled" ]]; then
+              continue
+            fi
+            if [[ "${ATTEMPT_CONCLUSION}" == "failure" ]]; then
+              IS_FIXED="true"
+            fi
+            break
+          done
         fi
 
         # cancelled の通知判定（notify_mode とは独立）

@@ -886,7 +886,9 @@ jobs:
 
 前回の実行が failure で今回が success の場合、ステータスが `Fixed`、色が青 (`#2196F3`) で通知されます。
 
-re-run で失敗したワークフローを再実行して成功した場合も Fixed として通知されます。アクション内部で `github.run_attempt` を確認し、前回 attempt の結果が failure であれば Fixed と判定します。
+前回の実行結果を参照する際、`skipped` と `cancelled` は「実質的な結果を出していない」ため除外し、直近の `success`/`failure` を前回の結論として扱います。これにより、`failure → skipped → skipped → success` のように skipped が連続したあとの成功でも Fixed として通知されます。直近 20 件の実行まで遡って判定します。
+
+re-run で失敗したワークフローを再実行して成功した場合も Fixed として通知されます。アクション内部で `github.run_attempt` を新しい順に遡り、`skipped`/`cancelled` を除外した直近 attempt の結果が failure であれば Fixed と判定します。
 
 </details>
 
