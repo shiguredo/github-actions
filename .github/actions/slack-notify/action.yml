@@ -94,6 +94,14 @@ runs:
       run: |
         set -euo pipefail
 
+        # slack_webhook が空の場合は通知をスキップ
+        # Dependabot の push や fork PR、シークレット未設定リポジトリでは
+        # secrets.* が空文字になり curl が exit 3 で落ちるため、早期リターンする
+        if [[ -z "${INPUT_SLACK_WEBHOOK}" ]]; then
+          echo "::warning::slack_webhook が空のため通知をスキップ"
+          exit 0
+        fi
+
         # ステータスを小文字に正規化
         STATUS=$(echo "${INPUT_STATUS}" | tr '[:upper:]' '[:lower:]')
 
