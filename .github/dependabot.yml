@@ -7,4 +7,3 @@ updates:
     allow:
       - dependency-name: "actions/cache"
       - dependency-name: "actions/checkout"
-      - dependency-name: "anthropics/claude-code-action"

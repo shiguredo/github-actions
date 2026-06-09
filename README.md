@@ -2,6 +2,10 @@
 
 GitHub Actions で使える便利なアクションを提供するリポジトリです。
 
+## 注意
+
+この GitHub Actions は社内利用のみを想定しているためタグが打たれることはありません。
+
 ## 提供アクション一覧
 
 | アクション名 | 説明 | ドキュメント |
@@ -10,7 +14,6 @@ GitHub Actions で使える便利なアクションを提供するリポジト�
 | Download OpenH264 | プラットフォーム別に OpenH264 ライブラリをダウンロード | [詳細](#download-openh264) |
 | Setup CUDA Toolkit | Linux と Windows 用の CUDA Toolkit をセットアップ | [詳細](#setup-cuda-toolkit) |
 | Rust Cache | Rust プロジェクトの依存関係とビルド成果物をキャッシュ | [詳細](#rust-cache) |
-| Claude Code Action | GitHub コメントから Claude Code を自動実行 | [詳細](#claude-code-action) |
 | Slack Notify | Slack に通知を送信（Docker レス、Fixed 通知対応） | [詳細](#slack-notify) |
 
 ## アクション詳細
@@ -542,116 +545,6 @@ jobs:
 
 </details>
 
-### Claude Code Action
-
-GitHub の Issue コメントや PR レビューコメントから Claude Code を自動実行するアクションです。
-コメント内のトリガーフレーズ (`!opus`, `!sonnet`, `!haiku`) を検出し、自動的に適切なモデルで Claude を実行します。
-
-write 権限を持つユーザーのみ実行可能で、OAuth トークンを設定したユーザーは全モデルを利用でき、その他のユーザーは API キーで sonnet/haiku のみ利用できます。
-
-OAuth トークンは複数ユーザー分を JSON 形式で指定できます。
-
-#### 基本的な使い方
-
-```yaml
-- uses: shiguredo/github-actions/.github/actions/claude-code-action@main
-  with:
-    api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-    oauth_users: '{"user1": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_USER1 }}"}'
-```
-
-#### 入力パラメータ
-
-| 名前 | 説明 | 必須 | デフォルト |
-|------|------|------|------------|
-| `api_key` | Anthropic API キー | ✓ | - |
-| `oauth_users` | GitHub ユーザー名と OAuth トークンの JSON マッピング | - | `'{}'` |
-
-`oauth_users` は JSON 形式で複数ユーザーを指定できます。登録されたユーザーは opus を含む全モデルを OAuth 認証で利用でき、未登録ユーザーは API キー認証で sonnet/haiku のみ利用できます。
-
-```yaml
-oauth_users: '{"user1": "${{ secrets.TOKEN_USER1 }}", "user2": "${{ secrets.TOKEN_USER2 }}"}'
-```
-
-#### トリガーフレーズとモデル
-
-| トリガーフレーズ | モデル | OAuth ユーザー | その他のユーザー |
-|-----------------|--------|---------------|-----------------|
-| `!opus` | claude-opus-4-6 | ✓ | ✗ |
-| `!sonnet` | claude-sonnet-4-6 | ✓ | ✓ |
-| `!haiku` | claude-haiku-4-5 | ✓ | ✓ |
-
-#### 使用例
-
-<details>
-<summary>単一ユーザーの OAuth 設定</summary>
-
-```yaml
-name: Claude Assistant
-
-on:
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-  actions: read
-
-jobs:
-  claude-response:
-    runs-on: ubuntu-slim
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - uses: shiguredo/github-actions/.github/actions/claude-code-action@main
-        with:
-          api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          oauth_users: '{"user1": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_USER1 }}"}'
-```
-
-</details>
-
-<details>
-<summary>複数ユーザーの OAuth 設定</summary>
-
-```yaml
-name: Claude Assistant
-
-on:
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-  actions: read
-
-jobs:
-  claude-response:
-    runs-on: ubuntu-slim
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - uses: shiguredo/github-actions/.github/actions/claude-code-action@main
-        with:
-          api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          oauth_users: |
-            {
-              "user1": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_USER1 }}",
-              "user2": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_USER2 }}",
-              "user3": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_USER3 }}"
-            }
-```
-
-</details>
-
 ### Slack Notify
 
 Slack に通知を送信する Composite Action です。Docker レスのため起動が高速です。
@@ -938,7 +831,7 @@ jobs:
 Apache License 2.0
 
 ```text
-Copyright 2025-2025, Shiguredo Inc.
+Copyright 2025-2026, Shiguredo Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
