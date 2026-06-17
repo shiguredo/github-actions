@@ -24,6 +24,11 @@ jobs:
             platform: ubuntu-24.04
             cuda_version: "12.9.1"
 
+          # Ubuntu 24.04 with CUDA 13.3
+          - os: ubuntu-24.04
+            platform: ubuntu-24.04
+            cuda_version: "13.3.0"
+
           # Ubuntu 22.04
           - os: ubuntu-22.04
             platform: ubuntu-22.04
