@@ -306,20 +306,26 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 
 利用可能な主な CUDA バージョン:
 
-**Ubuntu 22.04 / 24.04 / 26.04 / Windows:**
+**Ubuntu 22.04 / 24.04 / Windows:**
 
 - CUDA 12.x: `12.5.1`, `12.6.0`, `12.6.1`, `12.6.2`, `12.6.3`, `12.8.0`, `12.8.1`, `12.9.0`, `12.9.1`
-- CUDA 13.x: `13.0.0`, `13.0.1`, `13.0.2`, `13.1.0`, `13.1.1`, `13.2.0`, `13.2.1`, `13.3.0`
+- CUDA 13.x: `13.0.0`, `13.0.1`, `13.0.2`, `13.1.0`, `13.1.1`, `13.2.0`, `13.2.1`, `13.3.0`, `13.3.1`
+
+**Ubuntu 26.04:**
+
+- CUDA 13.x: `13.3.0`, `13.3.1`
 
 **注意:**
 
 - Ubuntu 24.04 では CUDA 12.5.1 以降が利用可能です
+- Ubuntu 26.04 の NVIDIA 公式リポジトリには CUDA 13.3.0 / 13.3.1 のみが公開されています
 - Ubuntu ではバージョンに自動的に `-1` が付加されてインストールされます（例: `12.9.1` → `cuda-toolkit-12=12.9.1-1`）
 
 最新の利用可能なバージョンについては、NVIDIA の公式サイトを確認してください:
 
 - Ubuntu 22.04 x86_64: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/>
 - Ubuntu 24.04 x86_64: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/>
+- Ubuntu 26.04 x86_64: <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/x86_64/>
 - Windows x86_64: <https://developer.download.nvidia.com/compute/cuda/repos/windows/x86_64/>
 
 #### 使用例
