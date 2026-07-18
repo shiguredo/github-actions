@@ -5,7 +5,7 @@ inputs:
     description: "CUDA version (e.g. 12.9.1)"
     required: true
   platform:
-    description: "Platform (ubuntu-22.04, ubuntu-24.04, windows-2022, windows-2025)"
+    description: "Platform (ubuntu-22.04, ubuntu-24.04, ubuntu-26.04, windows-2022, windows-2025)"
     required: true
   use-cache:
     description: "Whether to use cache for CUDA installation (true/false)"
@@ -35,6 +35,12 @@ runs:
         echo "Architecture check passed: $ARCH"
 
     # Linux 用のステップ
+    - name: Download CUDA keyring for Ubuntu 26.04
+      if: runner.os == 'Linux' && inputs.platform == 'ubuntu-26.04'
+      shell: bash
+      run: |
+        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/x86_64/cuda-keyring_1.1-1_all.deb
+
     - name: Download CUDA keyring for Ubuntu 24.04
       if: runner.os == 'Linux' && inputs.platform == 'ubuntu-24.04'
       shell: bash
@@ -58,7 +64,7 @@ runs:
           CUDA_VERSION="${CUDA_VERSION}-1"
         fi
         # CUDA_VERSION (例: 12.8.1-1) から cuda-toolkit-12=12.8.1-1 のような形式を生成
-        # Ubuntu 22.04 と 24.04 のどちらも cuda-toolkit-{major_version} 形式を使用
+        # Ubuntu 22.04 / 24.04 / 26.04 はいずれも cuda-toolkit-{major_version} 形式を使用
         CUDA_MAJOR=$(echo $CUDA_VERSION | cut -d. -f1)
         CUDA_PKG="cuda-toolkit-${CUDA_MAJOR}=${CUDA_VERSION}"
         sudo dpkg -i cuda-keyring_*all.deb

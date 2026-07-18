@@ -19,6 +19,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Ubuntu 26.04
+          - os: ubuntu-26.04
+            platform: ubuntu-26.04
+            cuda_version: "12.9.1"
+
           # Ubuntu 24.04
           - os: ubuntu-24.04
             platform: ubuntu-24.04

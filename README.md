@@ -270,7 +270,7 @@ jobs:
 
 ### Setup CUDA Toolkit
 
-Linux (Ubuntu 22.04/24.04) と Windows 用の CUDA Toolkit をセットアップするアクションです。
+Linux (Ubuntu 22.04/24.04/26.04) と Windows 用の CUDA Toolkit をセットアップするアクションです。
 CI/CD 環境で CUDA を必要とするビルドやテストを行う場合に便利です。
 
 Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインストールし、Windows ではキャッシュ機能を提供します。
@@ -292,7 +292,7 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 | 名前 | 説明 | 必須 | デフォルト |
 |------|------|------|------------|
 | `cuda_version` | CUDA バージョン（例: `12.9.1`） | ✓ | - |
-| `platform` | プラットフォーム（`ubuntu-22.04`, `ubuntu-24.04`, `windows-2022`, `windows-2025`） | ✓ | - |
+| `platform` | プラットフォーム（`ubuntu-22.04`, `ubuntu-24.04`, `ubuntu-26.04`, `windows-2022`, `windows-2025`） | ✓ | - |
 | `use-cache` | CUDA インストールをキャッシュするか（`true`/`false`） | - | `true` |
 
 #### 出力
@@ -306,7 +306,7 @@ Linux では NVIDIA の公式リポジトリから CUDA Toolkit をインスト�
 
 利用可能な主な CUDA バージョン:
 
-**Ubuntu 22.04 / 24.04 / Windows:**
+**Ubuntu 22.04 / 24.04 / 26.04 / Windows:**
 
 - CUDA 12.x: `12.5.1`, `12.6.0`, `12.6.1`, `12.6.2`, `12.6.3`, `12.8.0`, `12.8.1`, `12.9.0`, `12.9.1`
 - CUDA 13.x: `13.0.0`, `13.0.1`, `13.0.2`, `13.1.0`, `13.1.1`, `13.2.0`, `13.2.1`, `13.3.0`
