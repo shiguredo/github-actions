@@ -2,7 +2,7 @@ name: "Download OpenH264"
 description: "Download OpenH264 library for the platform"
 inputs:
   openh264_version:
-    description: "OpenH264 version (e.g. 2.6.0)"
+    description: "OpenH264 version (e.g. 2.7.0)"
     required: true
   use-cache:
     description: "Whether to use cache for downloaded library (true/false)"
@@ -79,18 +79,19 @@ runs:
         fi
 
         # プラットフォームごとの設定と URL 取得
+        # チェックサムファイルは v2.7.0 以降が SHA256、v2.6.0 以前が MD5 のため両方に対応する
         if [[ "${{ runner.os }}" == "Linux" ]]; then
           if [[ "${{ runner.arch }}" == "ARM64" ]]; then
             URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            CHECKSUM_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux-arm64.*\.so\.signed\.(md5|sha256)\.txt" | head -1 | tr -d '\r')
           else
             URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.bz2" | head -1 | tr -d '\r')
-            MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.md5\.txt" | head -1 | tr -d '\r')
+            CHECKSUM_URL=$(echo "$RELEASE_BODY" | grep -E "http.*linux64.*\.so\.signed\.(md5|sha256)\.txt" | head -1 | tr -d '\r')
           fi
           TARGET="${LIB_NAME}"
         elif [[ "${{ runner.os }}" == "macOS" ]]; then
           URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.bz2" | head -1 | tr -d '\r')
-          MD5_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.md5\.txt" | head -1 | tr -d '\r')
+          CHECKSUM_URL=$(echo "$RELEASE_BODY" | grep -E "http.*mac-arm64.*\.dylib\.signed\.(md5|sha256)\.txt" | head -1 | tr -d '\r')
           TARGET="${LIB_NAME}"
         else
           echo "Unknown OS: ${{ runner.os }}"
@@ -111,35 +112,58 @@ runs:
         echo "Extracting ${FILENAME}.bz2"
         bzip2 -d "${FILENAME}.bz2"
 
-        # MD5チェック（展開後のファイルに対して）
-        if [[ -n "$MD5_URL" ]]; then
-          echo "Downloading MD5 checksum..."
-          curl -LO "${MD5_URL}"
-          MD5_FILE=$(basename "${MD5_URL}")
-          
-          # MD5コマンドの違いを吸収
-          if command -v md5sum >/dev/null 2>&1; then
-            # Linux
-            EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
-            ACTUAL_MD5=$(md5sum "${FILENAME}" | cut -d' ' -f1)
-          elif command -v md5 >/dev/null 2>&1; then
-            # macOS
-            EXPECTED_MD5=$(awk '{print $NF}' < "${MD5_FILE}")
-            ACTUAL_MD5=$(md5 -q "${FILENAME}")
-          else
-            echo "Warning: No MD5 command found, skipping checksum verification"
-            EXPECTED_MD5=""
-            ACTUAL_MD5=""
-          fi
-          
-          if [[ -n "$EXPECTED_MD5" ]] && [[ "$EXPECTED_MD5" != "$ACTUAL_MD5" ]]; then
-            echo "Error: MD5 checksum mismatch!"
-            echo "Expected: $EXPECTED_MD5"
-            echo "Actual: $ACTUAL_MD5"
+        # チェックサム検証（展開後のファイルに対して）
+        if [[ -n "$CHECKSUM_URL" ]]; then
+          echo "Downloading checksum..."
+          curl -LO "${CHECKSUM_URL}"
+          CHECKSUM_FILE=$(basename "${CHECKSUM_URL}")
+
+          # チェックサムファイルの形式はバージョンで異なる
+          # v2.7.0 以降: "SHA256 (filename) = hash"
+          # v2.6.0 以前: "MD5 (filename) = hash"
+          # いずれの形式でも最終フィールドがハッシュ値になる
+          EXPECTED_CHECKSUM=$(awk '{print $NF}' < "${CHECKSUM_FILE}" | tr -d '\r')
+          if [[ ! "$EXPECTED_CHECKSUM" =~ ^[0-9a-f]+$ ]]; then
+            echo "Error: Failed to extract expected checksum from ${CHECKSUM_FILE}"
             exit 1
-          elif [[ -n "$EXPECTED_MD5" ]]; then
-            echo "MD5 checksum verified: $ACTUAL_MD5"
           fi
+
+          # ファイル名からチェックサムのアルゴリズムを判定する
+          if [[ "${CHECKSUM_FILE}" == *.sha256.txt ]]; then
+            # SHA256 の計算
+            if command -v sha256sum >/dev/null 2>&1; then
+              # Linux
+              ACTUAL_CHECKSUM=$(sha256sum "${FILENAME}" | cut -d' ' -f1)
+            elif command -v shasum >/dev/null 2>&1; then
+              # macOS
+              ACTUAL_CHECKSUM=$(shasum -a 256 "${FILENAME}" | cut -d' ' -f1)
+            else
+              echo "Error: No SHA256 command found"
+              exit 1
+            fi
+          else
+            # MD5 の計算
+            if command -v md5sum >/dev/null 2>&1; then
+              # Linux
+              ACTUAL_CHECKSUM=$(md5sum "${FILENAME}" | cut -d' ' -f1)
+            elif command -v md5 >/dev/null 2>&1; then
+              # macOS
+              ACTUAL_CHECKSUM=$(md5 -q "${FILENAME}")
+            else
+              echo "Error: No MD5 command found"
+              exit 1
+            fi
+          fi
+
+          if [[ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
+            echo "Error: Checksum mismatch!"
+            echo "Expected: $EXPECTED_CHECKSUM"
+            echo "Actual: $ACTUAL_CHECKSUM"
+            exit 1
+          fi
+          echo "Checksum verified: $ACTUAL_CHECKSUM"
+        else
+          echo "Warning: Checksum URL not found, skipping checksum verification"
         fi
 
         # キャッシュディレクトリにコピー
@@ -172,10 +196,11 @@ runs:
         }
 
         # Windows用のURLを取得
+        # チェックサムファイルは v2.7.0 以降が SHA256、v2.6.0 以前が MD5 のため両方に対応する
         $URL = $releaseBody | Select-String -Pattern "http.*win64.*\.dll\.bz2" | Select-Object -First 1
         if ($URL) { $URL = $URL.Line.Trim() }
-        $MD5_URL = $releaseBody | Select-String -Pattern "http.*win64.*\.dll\.signed\.md5\.txt" | Select-Object -First 1
-        if ($MD5_URL) { $MD5_URL = $MD5_URL.Line.Trim() }
+        $CHECKSUM_URL = $releaseBody | Select-String -Pattern "http.*win64.*\.dll\.signed\.(md5|sha256)\.txt" | Select-Object -First 1
+        if ($CHECKSUM_URL) { $CHECKSUM_URL = $CHECKSUM_URL.Line.Trim() }
 
         if (-not $URL) {
           Write-Host "Error: Could not find Windows x64 URL in release"
@@ -190,21 +215,39 @@ runs:
         7z e $filename
         $dllName = $filename -replace '\.bz2$', ''
 
-        # MD5チェック（展開後のファイルに対して）
-        if ($MD5_URL) {
-          Write-Host "Downloading MD5 checksum..."
-          Invoke-WebRequest -Uri $MD5_URL -OutFile "md5.txt"
-          $md5Content = Get-Content "md5.txt" -Raw
-          # MD5ファイル形式: "md5 *filename" から md5 部分を抽出
-          $expectedMd5 = ($md5Content.Trim() -split '\s+')[0].ToLower()
-          $actualMd5 = (Get-FileHash -Path $dllName -Algorithm MD5).Hash.ToLower()
-          if ($expectedMd5 -ne $actualMd5) {
-            Write-Host "Error: MD5 checksum mismatch!"
-            Write-Host "Expected: $expectedMd5"
-            Write-Host "Actual: $actualMd5"
+        # チェックサム検証（展開後のファイルに対して）
+        if (-not $CHECKSUM_URL) {
+          Write-Host "Warning: Checksum URL not found, skipping checksum verification"
+        } else {
+          Write-Host "Downloading checksum..."
+          $checksumFile = Split-Path $CHECKSUM_URL -Leaf
+          Invoke-WebRequest -Uri $CHECKSUM_URL -OutFile $checksumFile
+          $checksumContent = (Get-Content $checksumFile -Raw).Trim()
+
+          # チェックサムファイルの形式はバージョンで異なるため URL からアルゴリズムを判定する
+          # v2.7.0 以降: "SHA256 (filename) = hash"
+          # v2.6.0 以前: "hash *filename"
+          if ($CHECKSUM_URL -match '\.sha256\.txt$') {
+            # "SHA256 (filename) = hash" 形式から hash 部分を抽出
+            $algorithm = "SHA256"
+            $expectedChecksum = ($checksumContent -split '=')[-1].Trim().ToLower()
+          } else {
+            # "hash *filename" 形式から hash 部分を抽出
+            $algorithm = "MD5"
+            $expectedChecksum = ($checksumContent -split '\s+')[0].ToLower()
+          }
+          if ($expectedChecksum -notmatch '^[0-9a-f]+$') {
+            Write-Host "Error: Failed to extract expected checksum from $checksumFile"
             exit 1
           }
-          Write-Host "MD5 checksum verified: $actualMd5"
+          $actualChecksum = (Get-FileHash -Path $dllName -Algorithm $algorithm).Hash.ToLower()
+          if ($expectedChecksum -ne $actualChecksum) {
+            Write-Host "Error: $algorithm checksum mismatch!"
+            Write-Host "Expected: $expectedChecksum"
+            Write-Host "Actual: $actualChecksum"
+            exit 1
+          }
+          Write-Host "$algorithm checksum verified: $actualChecksum"
         }
 
         # キャッシュディレクトリにコピー

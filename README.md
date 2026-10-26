@@ -127,7 +127,8 @@ jobs:
 プラットフォームとアーキテクチャは `runner.os` と `runner.arch` から自動的に判定されるため、明示的な指定は不要です。
 
 このアクションは GitHub CLI (`gh`) を使用して cisco/openh264 の公式リリースから動的に URL を取得するため、ライブラリのバージョン番号（.so.8 など）が変更されても自動的に対応します。
-また、ダウンロード後は MD5 チェックサムによる整合性検証も自動的に行います。
+また、ダウンロード後はチェックサムによる整合性検証も自動的に行います。
+チェックサムのアルゴリズムは OpenH264 2.7.0 以降が SHA256、2.6.0 以前は MD5 のため、バージョンに応じて自動的に切り替わります。
 
 オプションでキャッシュ機能を有効にすることで、同じバージョンのライブラリを再ダウンロードすることなく高速にビルドを実行できます。
 
@@ -137,14 +138,14 @@ jobs:
 - uses: shiguredo/github-actions/.github/actions/download-openh264@main
   id: openh264
   with:
-    openh264_version: 2.6.0
+    openh264_version: 2.7.0
 ```
 
 #### 入力パラメータ
 
 | 名前 | 説明 | 必須 | デフォルト |
 |------|------|------|------------|
-| `openh264_version` | OpenH264 のバージョン（例: `2.6.0`） | ✓ | - |
+| `openh264_version` | OpenH264 のバージョン（例: `2.7.0`） | ✓ | - |
 | `use-cache` | ダウンロードしたライブラリをキャッシュするか（`true`/`false`） | - | `false` |
 
 **注意:** プラットフォームは `runner.os` と `runner.arch` から自動的に判定されます。
@@ -166,8 +167,7 @@ jobs:
 | Ubuntu 22.04 (ARM64) | `ubuntu-22.04-arm` | `libopenh264.so` |
 | macOS 26 (ARM64) | `macos-26` | `libopenh264.dylib` |
 | macOS 15 (ARM64) | `macos-15` | `libopenh264.dylib` |
-| macOS 14 (ARM64) | `macos-14` | `libopenh264.dylib` |
-| Windows 2025 (x86_64) | `windows-2025` | `libopenh264.dll` |
+| Windows 2025 (x86_64) | `windows-2025-vs2026` | `libopenh264.dll` |
 | Windows 2022 (x86_64) | `windows-2022` | `libopenh264.dll` |
 
 #### 使用例
@@ -189,7 +189,7 @@ jobs:
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
         with:
-          openh264_version: 2.6.0
+          openh264_version: 2.7.0
 
       - name: Build with OpenH264
         run: |
@@ -223,7 +223,7 @@ jobs:
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
         with:
-          openh264_version: 2.6.0
+          openh264_version: 2.7.0
 
       - name: Use OpenH264
         run: |
@@ -249,7 +249,7 @@ jobs:
       - uses: shiguredo/github-actions/.github/actions/download-openh264@main
         id: openh264
         with:
-          openh264_version: 2.6.0
+          openh264_version: 2.7.0
           use-cache: 'true'
 
       - name: Show cache status

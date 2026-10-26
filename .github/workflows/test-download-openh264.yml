@@ -23,9 +23,19 @@ jobs:
             openh264_version: "2.6.0"
             expected_lib: libopenh264.so
 
+          # Ubuntu 24.04 x86_64
+          - os: ubuntu-24.04
+            openh264_version: "2.7.0"
+            expected_lib: libopenh264.so
+
           # Ubuntu 22.04 x86_64
           - os: ubuntu-22.04
             openh264_version: "2.6.0"
+            expected_lib: libopenh264.so
+
+          # Ubuntu 22.04 x86_64
+          - os: ubuntu-22.04
+            openh264_version: "2.7.0"
             expected_lib: libopenh264.so
 
           # Ubuntu ARM64
@@ -34,8 +44,18 @@ jobs:
             expected_lib: libopenh264.so
 
           # Ubuntu ARM64
+          - os: ubuntu-24.04-arm
+            openh264_version: "2.7.0"
+            expected_lib: libopenh264.so
+
+          # Ubuntu ARM64
           - os: ubuntu-22.04-arm
             openh264_version: "2.6.0"
+            expected_lib: libopenh264.so
+
+          # Ubuntu ARM64
+          - os: ubuntu-22.04-arm
+            openh264_version: "2.7.0"
             expected_lib: libopenh264.so
 
           # macOS 26 ARM64
@@ -43,24 +63,39 @@ jobs:
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dylib
 
+          # macOS 26 ARM64
+          - os: macos-26
+            openh264_version: "2.7.0"
+            expected_lib: libopenh264.dylib
+
           # macOS 15 ARM64
           - os: macos-15
             openh264_version: "2.6.0"
             expected_lib: libopenh264.dylib
 
-          # macOS 14 ARM64
-          - os: macos-14
-            openh264_version: "2.6.0"
+          # macOS 15 ARM64
+          - os: macos-15
+            openh264_version: "2.7.0"
             expected_lib: libopenh264.dylib
 
           # Windows 2025 x86_64
-          - os: windows-2025
+          - os: windows-2025-vs2026
             openh264_version: "2.6.0"
+            expected_lib: libopenh264.dll
+
+          # Windows 2025 x86_64
+          - os: windows-2025-vs2026
+            openh264_version: "2.7.0"
             expected_lib: libopenh264.dll
 
           # Windows 2022 x86_64
           - os: windows-2022
             openh264_version: "2.6.0"
+            expected_lib: libopenh264.dll
+
+          # Windows 2022 x86_64
+          - os: windows-2022
+            openh264_version: "2.7.0"
             expected_lib: libopenh264.dll
 
           # 異なるバージョンのテスト
